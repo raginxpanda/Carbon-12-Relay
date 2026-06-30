@@ -1,0 +1,70 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Carbon-12 Relay</title>
+<style>
+ :root{--bg:#0b1120;--panel:#121a2e;--line:#1f2d4a;--blue:#4a9eff;--orange:#E8652B;--text:#dbe4f5;--muted:#7d8aa5;--good:#3ddc84}
+ *{box-sizing:border-box} body{margin:0;font:14px/1.5 system-ui,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--text)}
+ header{padding:16px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px}
+ header b{font-size:16px;letter-spacing:.5px} .dot{width:9px;height:9px;border-radius:50%;background:var(--muted)} .dot.on{background:var(--good)} .dot.off{background:var(--orange)}
+ main{padding:20px;display:flex;flex-direction:column;gap:16px}
+ label{display:block;font-size:12px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px}
+ input[type=text],input:not([type]){width:100%;padding:9px 11px;background:var(--panel);border:1px solid var(--line);border-radius:6px;color:var(--text);font:13px monospace;margin-bottom:8px}
+ .row{display:flex;gap:10px;flex-wrap:wrap}.row>button{flex:1}
+ button{padding:9px 14px;border:1px solid var(--line);background:var(--panel);color:var(--text);border-radius:6px;cursor:pointer;font-weight:600}
+ button.primary{background:var(--blue);border-color:var(--blue);color:#04122b}button.warn{border-color:var(--orange);color:var(--orange)}button:hover{filter:brightness(1.1)}
+ .hint{font-size:12px;color:var(--muted)}.card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px}
+ .prow{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}.prow:last-child{border-bottom:none}
+ #log{height:130px;overflow:auto;background:#070d1a;border:1px solid var(--line);border-radius:6px;padding:10px;font:12px/1.5 monospace;color:#9fb3d6;white-space:pre-wrap}
+ summary{cursor:pointer}.chk{display:flex;align-items:center;gap:8px}.chk input{width:auto;margin:0}
+</style></head>
+<body>
+ <header><img src="icon.png" width="20" height="20"><b>CARBON-12 RELAY</b><span id="dot" class="dot off"></span><span id="state" class="hint">stopped</span></header>
+ <main>
+  <div class="card">
+   <div class="hint" style="margin-bottom:10px">Paired orgs. Add one token per org you want to sync to (Dashboard \u2192 Companion \u2192 Devices, then click Pair desktop app or paste the token here).</div>
+   <div id="pairings"></div>
+   <div style="margin-top:12px">
+    <label>Add org</label>
+    <input type="text" id="p-label" placeholder="Org name (optional)">
+    <input type="text" id="p-token" placeholder="paste device token">
+    <details><summary class="hint">Advanced (endpoint)</summary><input type="text" id="p-endpoint" placeholder="https://carbon-12.gg/dashboard/api/companion/ingest" style="margin-top:8px"></details>
+    <button class="primary" id="p-add" style="margin-top:8px;width:100%">Add org</button>
+   </div>
+  </div>
+  <div class="card"><label>Connection</label><div id="health"><span class="hint">not started</span></div></div>
+  <div class="row"><button class="primary" id="start">Start</button><button class="warn" id="stop">Stop</button><button id="digest">Last digest</button></div>
+  <div class="card"><label>Game.log path</label><input type="text" id="logPath"><button id="save-log" style="width:100%">Save path</button></div>
+  <div class="card"><label>Startup</label><div class="chk"><input type="checkbox" id="launch"><span>Launch at login (starts hidden in the tray)</span></div></div>
+  <div><label>Activity</label><div id="log"></div></div>
+ </main>
+<script>
+ const $=(id)=>document.getElementById(id); const logEl=$('log');
+ function line(t){ logEl.textContent+=(logEl.textContent?'\n':'')+t; logEl.scrollTop=logEl.scrollHeight; }
+ function setState(on){ $('dot').className='dot '+(on?'on':'off'); $('state').textContent=on?'running':'stopped'; }
+ function relAgo(ms){ const s=Math.round(ms/1000); if(s<60)return s+'s'; const m=Math.round(s/60); if(m<60)return m+'m'; return Math.round(m/60)+'h'; }
+ async function refresh(){
+   const c=await window.relay.getConfig(); $('logPath').value=c.logPath||'';
+   const box=$('pairings'); box.innerHTML='';
+   if(!c.pairings.length){ box.innerHTML='<div class="hint">No orgs yet — add one below.</div>'; }
+   else c.pairings.forEach((p,i)=>{ const row=document.createElement('div'); row.className='prow';
+     const left=document.createElement('span'); left.innerHTML='<b>'+(p.label||'Org')+'</b> <span class="hint">'+p.tokenMasked+'</span>';
+     const btn=document.createElement('button'); btn.className='warn'; btn.textContent='Remove';
+     btn.onclick=async()=>{ await window.relay.removePairing(i); line('removed '+(p.label||'org')); refresh(); };
+     row.appendChild(left); row.appendChild(btn); box.appendChild(row); });
+ }
+ $('p-add').onclick=async()=>{ const token=$('p-token').value.trim(); if(!token){ line('paste a token first'); return; }
+   await window.relay.addPairing({ label:$('p-label').value.trim(), token, endpoint:($('p-endpoint').value.trim()||undefined) });
+   $('p-token').value=''; $('p-label').value=''; line('org added'); refresh(); };
+ $('save-log').onclick=async()=>{ await window.relay.saveLogPath($('logPath').value.trim()); line('log path saved'); };
+ $('start').onclick=async()=>{ const r=await window.relay.start(); setState(r.ok); line(r.ok?'started':'cannot start: '+(r.reason||'error')); };
+ $('stop').onclick=async()=>{ await window.relay.stop(); setState(false); };
+ $('digest').onclick=async()=> line(await window.relay.digest());
+ $('launch').onchange=async()=>{ await window.relay.setLoginItem($('launch').checked); line('launch at login: '+($('launch').checked?'on':'off')); };
+ window.relay.onStatus((l)=>{ line(l); if(/running|started/.test(l)) setState(true); if(/stopped/.test(l)) setState(false); });
+ window.relay.onRefresh(refresh);
+ window.relay.onHealth((arr)=>{ const box=$('health'); if(!box) return;
+   if(!arr||!arr.length){ box.innerHTML='<span class="hint">not started</span>'; return; }
+   box.innerHTML=arr.map((h)=>{ const ago=h.agoMs==null?'no sync yet':'synced '+relAgo(h.agoMs)+' ago'; const ok=(h.status==='ok'||h.status==='idle');
+     return '<div class="prow"><span><b>'+h.label+'</b> <span class="hint">'+ago+' \u00b7 '+h.pending+' queued</span></span><span style="color:'+(ok?'var(--good)':'var(--orange)')+'">'+(ok?'\u25cf':'\u25cb')+' '+h.status+'</span></div>'; }).join('');
+ });
+ (async()=>{ try{ const l=await window.relay.getLoginItem(); $('launch').checked=!!l.openAtLogin; }catch{} })();
+ refresh();
+</script></body></html>

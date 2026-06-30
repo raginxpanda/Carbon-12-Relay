@@ -1,0 +1,67 @@
+{
+  "name": "carbon12-relay",
+  "version": "0.2.0",
+  "description": "Carbon-12 desktop companion relay \u2014 tails the Star Citizen Game.log and pushes events to a Carbon-12 org.",
+  "type": "module",
+  "bin": {
+    "carbon12-relay": "bin/carbon12-relay.mjs"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "start": "node bin/carbon12-relay.mjs run",
+    "gui": "electron .",
+    "dist": "electron-builder"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "main": "electron/main.cjs",
+  "devDependencies": {
+    "electron": "^31.0.0",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "gg.carbon12.relay",
+    "productName": "Carbon-12 Relay",
+    "files": [
+      "electron/**/*",
+      "src/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ],
+      "icon": "electron/icon.png"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "createDesktopShortcut": true,
+      "runAfterFinish": true
+    },
+    "mac": {
+      "target": [
+        "dmg"
+      ],
+      "icon": "electron/icon.png"
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "icon": "electron/icon.png"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "YOUR_GITHUB_USERNAME",
+        "repo": "carbon12-relay"
+      }
+    ]
+  },
+  "dependencies": {
+    "electron-updater": "^6.3.9"
+  }
+}

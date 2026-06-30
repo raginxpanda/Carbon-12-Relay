@@ -1,0 +1,13 @@
+import { test } from 'node:test'; import assert from 'node:assert/strict';
+import { createParser, matchHandle, matchBlueprint, matchActorDeath } from '../src/parser.mjs';
+const HANDLE='<t> [Notice] <AccountLoginCharacterStatus_Character> Character: - geid 204731413446 - accountId 1 - name TestPilot - state STATE_CURRENT';
+const LOGIN ='<t> [Notice] <Legacy login response> User Login Success - Handle[TestPilot] - Time[1]';
+const SESSION='<t> [Notice] <ContextEstablisherTaskFinished> establisher="CReplicationModel" sessionId="abc-123"';
+const BP="<t> Received Blueprint: Omnisky III Cannon: trailing";
+const KILL="<t> <Actor Death> CActor::Kill: 'BadGuy' [1] in zone 'Stanton' killed by 'TestPilot' [2] using 'smg_01' [c] with damage type 'Bullet'";
+test('handle', () => { assert.equal(matchHandle(HANDLE).handle,'TestPilot'); assert.equal(matchHandle(HANDLE).geid,'204731413446'); assert.equal(matchHandle(LOGIN).handle,'TestPilot'); });
+test('blueprint', () => assert.equal(matchBlueprint(BP).name,'Omnisky III Cannon'));
+test('death', () => { const d=matchActorDeath(KILL); assert.equal(d.victim,'BadGuy'); assert.equal(d.killer,'TestPilot'); assert.equal(d.weapon,'smg_01'); });
+test('stateful attributes + dedupes', () => { const p=createParser(); ['<t> FileVersion: 4.8.184.2887',HANDLE,LOGIN,SESSION,SESSION].forEach(l=>p.feed(l));
+  assert.equal(p.state.handle,'TestPilot'); assert.equal(p.state.version,'4.8.184.2887'); assert.equal(p.state.sessionId,'abc-123');
+  assert.equal(p.feed(KILL).find(e=>e.type==='actor_death').role,'kill'); });
