@@ -3,7 +3,7 @@ import { createParser, matchHandle, matchBlueprint, matchActorDeath } from '../s
 const HANDLE='<t> [Notice] <AccountLoginCharacterStatus_Character> Character: - geid 204731413446 - accountId 1 - name TestPilot - state STATE_CURRENT';
 const LOGIN ='<t> [Notice] <Legacy login response> User Login Success - Handle[TestPilot] - Time[1]';
 const SESSION='<t> [Notice] <ContextEstablisherTaskFinished> establisher="CReplicationModel" sessionId="abc-123"';
-const BP="<t> Received Blueprint: Omnisky III Cannon: trailing";
+const BP='<t> [Notice] <SHUDEvent_OnNotification> Added notification "Received Blueprint: Omnisky III Cannon: " [1] to queue.';
 const KILL="<t> <Actor Death> CActor::Kill: 'BadGuy' [1] in zone 'Stanton' killed by 'TestPilot' [2] using 'smg_01' [c] with damage type 'Bullet'";
 test('handle', () => { assert.equal(matchHandle(HANDLE).handle,'TestPilot'); assert.equal(matchHandle(HANDLE).geid,'204731413446'); assert.equal(matchHandle(LOGIN).handle,'TestPilot'); });
 test('blueprint', () => assert.equal(matchBlueprint(BP).name,'Omnisky III Cannon'));

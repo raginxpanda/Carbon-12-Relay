@@ -1,7 +1,8 @@
 // Carbon-12 Relay — Star Citizen Game.log parser. Pure, dependency-free.
 // Validation (real 4.8.184 LIVE log, 2026-06-29): handle_detected, session_start,
-// build/env CONFIRMED. blueprint_earned (Warchest-proven) + actor_death
-// (community-known) PENDING a session that contains them.
+// handle/build/env/session CONFIRMED. blueprint_earned CONFIRMED against real
+// 4.8 logbackups (Added-notification line, deduped by name). actor_death
+// (community-known format) still PENDING a session that contains a kill.
 const TS = /^<([0-9T:.+\-]+Z)>/;
 export function tsOf(line) { const m = line.match(TS); return m ? m[1] : null; }
 export function matchHandle(line) {
@@ -21,7 +22,11 @@ export function matchSession(line) {
   return m ? { sessionId: m[1] } : null;
 }
 export function matchBlueprint(line) {
-  const m = line.match(/Received Blueprint:\s*(.+?):/); return m ? { name: m[1].trim() } : null;
+  // Real earn line (4.8): [Notice] <SHUDEvent_OnNotification> Added notification
+  //   "Received Blueprint: <name>: " [id] to queue.  — the same blueprint also
+  // re-echoes on render/fade/remove, so match ONLY the "Added notification" event.
+  const m = line.match(/Added notification "Received Blueprint:\s*(.+?):\s*"/);
+  return m ? { name: m[1].trim() } : null;
 }
 export function matchActorDeath(line) {
   if (!/<Actor Death>/.test(line) && !/CActor::Kill/.test(line)) return null;
@@ -31,7 +36,7 @@ export function matchActorDeath(line) {
   return { victim, killer, weapon: g(/using '([^']+)'/), zone: g(/in zone '([^']+)'/), damageType: g(/with damage type '([^']+)'/) };
 }
 export function createParser() {
-  const state = { handle: null, geid: null, sessionId: null, version: null, environment: null };
+  const state = { handle: null, geid: null, sessionId: null, version: null, environment: null, seenBlueprints: new Set() };
   function feed(rawLine) {
     const line = rawLine.replace(/\r$/, ''); const ts = tsOf(line); const out = [];
     const b = matchBuild(line); if (b) Object.assign(state, b);
@@ -41,7 +46,8 @@ export function createParser() {
     const ss = matchSession(line);
     if (ss && ss.sessionId !== state.sessionId) { state.sessionId = ss.sessionId;
       out.push({ type:'session_start', sessionId: ss.sessionId, version: state.version, environment: state.environment, ts }); }
-    const bp = matchBlueprint(line); if (bp) out.push({ type:'blueprint_earned', name: bp.name, handle: state.handle, ts });
+    const bp = matchBlueprint(line);
+    if (bp && !state.seenBlueprints.has(bp.name)) { state.seenBlueprints.add(bp.name); out.push({ type:'blueprint_earned', name: bp.name, handle: state.handle, ts }); }
     const d = matchActorDeath(line);
     if (d) { const role = state.handle && d.killer === state.handle ? 'kill' : state.handle && d.victim === state.handle ? 'death' : 'witness';
       out.push({ type:'actor_death', ...d, role, handle: state.handle, ts }); }

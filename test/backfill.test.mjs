@@ -3,7 +3,7 @@ import { mkdtempSync, writeFileSync, rmSync } from 'node:fs'; import { tmpdir } 
 import { scanLogs } from '../src/backfill.mjs';
 test('scanLogs extracts scoped events across multiple log files', () => {
   const dir = mkdtempSync(join(tmpdir(), 'c12bf-'));
-  writeFileSync(join(dir, 'a.log'), '<t> [Notice] <AccountLoginCharacterStatus_Character> - name P - state STATE_CURRENT\n<t> Received Blueprint: Omnisky III: x\n');
+  writeFileSync(join(dir, 'a.log'), '<t> [Notice] <AccountLoginCharacterStatus_Character> - name P - state STATE_CURRENT\n<t> [Notice] <SHUDEvent_OnNotification> Added notification "Received Blueprint: Omnisky III: " [1] to queue.\n');
   writeFileSync(join(dir, 'b.log'), "<t> <Actor Death> CActor::Kill: 'V' [1] in zone 'Z' killed by 'P' [2] using 'gun' [c] with damage type 'Bullet'\n");
   writeFileSync(join(dir, 'notes.txt'), 'ignored\n');
   const { files, events } = scanLogs(dir);
