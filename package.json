@@ -1,7 +1,7 @@
 {
   "name": "carbon12-relay",
-  "version": "0.2.0",
-  "description": "Carbon-12 desktop companion relay \u2014 tails the Star Citizen Game.log and pushes events to a Carbon-12 org.",
+  "version": "0.2.1",
+  "description": "Carbon-12 desktop companion relay — tails the Star Citizen Game.log and pushes events to a Carbon-12 org.",
   "type": "module",
   "bin": {
     "carbon12-relay": "bin/carbon12-relay.mjs"
