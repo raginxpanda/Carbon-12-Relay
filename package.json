@@ -56,12 +56,13 @@
     "publish": [
       {
         "provider": "github",
-        "owner": "raginxpanda",
+        "owner": "YOUR_GITHUB_USERNAME",
         "repo": "carbon12-relay"
       }
     ]
   },
   "dependencies": {
     "electron-updater": "^6.3.9"
-  }
+  },
+  "author": "Black Diamond Corporation"
 }
