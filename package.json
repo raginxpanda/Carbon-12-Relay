@@ -56,8 +56,8 @@
     "publish": [
       {
         "provider": "github",
-        "owner": "YOUR_GITHUB_USERNAME",
-        "repo": "carbon12-relay"
+        "owner": "raginxpanda",
+        "repo": "Carbon-12-Relay"
       }
     ]
   },
