@@ -13,3 +13,7 @@ test('health flips to ok with lastSuccessAt after a flush', async () => {
   await c.flush();
   assert.equal(c.health().status, 'ok'); assert.ok(c.health().lastSuccessAt);
 });
+test('haul() GETs /haul and returns count + recent', async () => {
+  const c = new IngestClient({ endpoint:'https://h/dashboard/api/companion/ingest', token:'t', fetchImpl: async (u)=>{ assert.match(u,/\/haul$/); return { ok:true, status:200, json: async()=>({ ok:true, org:'Black Diamond', count:3, recent:['A','B','C'] }) }; } });
+  const r = await c.haul(); assert.equal(r.count, 3); assert.equal(r.org, 'Black Diamond');
+});

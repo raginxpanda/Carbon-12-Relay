@@ -4,6 +4,24 @@ import { IngestClient } from './client.mjs';
 import { recordEvents, mostRecentSession, sessionByKey, prune, getState, setState } from './store.mjs';
 import { formatDigest, buildRecap } from './digest.mjs';
 const SCOPED = new Set(['blueprint_earned', 'actor_death']);
+
+// Live per-blueprint desktop toast. Coalesces a burst (SC can grant several at
+// once) into a single notification within `delay` ms.
+export function makeBlueprintNotifier(tell, delay = 1500) {
+  let buffer = []; let timer = null;
+  return {
+    push(name) {
+      buffer.push(name);
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        const names = buffer; buffer = []; timer = null;
+        if (names.length === 1) tell(`Blueprint earned: ${names[0]}`);
+        else tell(`${names.length} blueprints earned: ${names.slice(0, 5).join(', ')}${names.length > 5 ? '\u2026' : ''}`);
+      }, delay);
+    },
+    stop() { if (timer) { clearTimeout(timer); timer = null; } },
+  };
+}
 export function makeClients(pairings, fetchImpl) {
   return (pairings || []).map((p) => ({ label: p.label, client: new IngestClient({ endpoint: p.endpoint, token: p.token, fetchImpl }) }));
 }
@@ -20,6 +38,7 @@ export function startRelay({ config, fetchImpl, log = console.log, notify, store
       else log(`[${label}] connection check deferred (${r.reason || 'error'})`);
     }).catch(() => {});
   }
+  const bpNotifier = makeBlueprintNotifier(tell);
   const fanout = (ev) => { for (const c of clients) c.client.enqueue(ev); };
   const primary = (ev) => { if (clients[0]) clients[0].client.enqueue(ev); };
   function emitDigest(session) {
@@ -35,7 +54,10 @@ export function startRelay({ config, fetchImpl, log = console.log, notify, store
     for (const ev of parser.feed(line)) {
       if (ev.type === 'handle_detected') log(`identified as ${ev.handle}`);
       if (ev.type === 'session_start' && ev.sessionId && ev.sessionId !== sessionKey) { emitDigest(sessionByKey(sessionKey, storePath)); sessionKey = ev.sessionId; }
-      if (SCOPED.has(ev.type)) { fanout(ev); recordEvents([ev], { sessionKey, dir: storePath }); }
+      if (SCOPED.has(ev.type)) {
+        fanout(ev); recordEvents([ev], { sessionKey, dir: storePath });
+        if (ev.type === 'blueprint_earned') { log(`blueprint earned: ${ev.name}`); bpNotifier.push(ev.name); }
+      }
     }
   }, { fromStart: false });
   const timer = setInterval(async () => {
@@ -46,5 +68,5 @@ export function startRelay({ config, fetchImpl, log = console.log, notify, store
       else if (!r.ok && r.reason !== 'unconfigured') log(`[${label}] deferred (${r.reason}), ${client.pending} queued`);
     }
   }, config.flushMs || 5000);
-  return { stop: () => { stopTail(); clearInterval(timer); }, clients, parser };
+  return { stop: () => { stopTail(); clearInterval(timer); bpNotifier.stop(); }, clients, parser };
 }

@@ -7,20 +7,24 @@ import { createParser } from './parser.mjs';
 
 const SCOPED = new Set(['blueprint_earned', 'actor_death']);
 
+export function scanFile(file, { onScoped } = {}) {
+  let text;
+  try { if (!statSync(file).isFile()) return []; text = readFileSync(file, 'utf8'); } catch { return []; }
+  const parser = createParser();
+  const events = [];
+  for (const line of text.split('\n')) {
+    for (const ev of parser.feed(line)) {
+      if (SCOPED.has(ev.type)) { events.push(ev); if (onScoped) onScoped(ev); }
+    }
+  }
+  return events;
+}
+
 export function scanLogs(dir, { onScoped } = {}) {
   let names;
   try { names = readdirSync(dir); } catch { return { files: 0, events: [] }; }
   const files = names.filter((f) => f.toLowerCase().endsWith('.log')).sort();
   const events = [];
-  for (const f of files) {
-    let text;
-    try { if (!statSync(join(dir, f)).isFile()) continue; text = readFileSync(join(dir, f), 'utf8'); } catch { continue; }
-    const parser = createParser();
-    for (const line of text.split('\n')) {
-      for (const ev of parser.feed(line)) {
-        if (SCOPED.has(ev.type)) { events.push(ev); if (onScoped) onScoped(ev); }
-      }
-    }
-  }
+  for (const f of files) events.push(...scanFile(join(dir, f), { onScoped }));
   return { files: files.length, events };
 }

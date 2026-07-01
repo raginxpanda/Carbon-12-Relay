@@ -74,8 +74,9 @@ else {
   app.on('open-url', (e, url) => { e.preventDefault(); handlePairUrl(url); }); // macOS
   app.whenReady().then(async () => {
     let img = nativeImage.createFromPath(path.join(__dirname, 'icon.png')); if (img.isEmpty()) img = nativeImage.createEmpty();
-    tray = new Tray(img); tray.setToolTip('Carbon-12 Relay'); tray.on('click', createWindow); updateTray(false); createWindow();
-    ipcMain.handle('getConfig', async () => { const { config } = await load(); const c = config.loadConfig();
+    tray = new Tray(img); tray.setToolTip(`Carbon-12 Relay v${(() => { try { return app.getVersion(); } catch { return '?'; } })()}`); tray.on('click', createWindow); updateTray(false); createWindow();
+    ipcMain.handle('getVersion', () => { try { return app.getVersion(); } catch { return '?'; } });
+  ipcMain.handle('getConfig', async () => { const { config } = await load(); const c = config.loadConfig();
       return { logPath: c.logPath, pairings: c.pairings.map((p) => ({ label: p.label, endpoint: p.endpoint, tokenMasked: '\u2022\u2022\u2022\u2022' + String(p.token).slice(-4) })) }; });
     ipcMain.handle('addPairing', async (_e, patch) => { const { config } = await load(); const cfg = config.loadConfig(); config.addPairing(cfg, patch); config.saveConfig(cfg); return { ok: true }; });
     ipcMain.handle('removePairing', async (_e, i) => { const { config } = await load(); const cfg = config.loadConfig(); config.removePairing(cfg, i); config.saveConfig(cfg); return { ok: true }; });
@@ -83,6 +84,28 @@ else {
     ipcMain.handle('start', () => startRelay());
     ipcMain.handle('stop', () => { stopRelay(); return { ok: true }; });
     ipcMain.handle('digest', async () => { const { store, digest } = await load(); return digest.formatDigest(store.mostRecentSession()) || 'No recorded haul yet.'; });
+  ipcMain.handle('haul', async () => {
+    const { config, relay: relayMod } = await load();
+    const cfg = config.loadConfig();
+    if (!cfg.pairings.length) return { ok: false, reason: 'unpaired' };
+    const clients = relayMod.makeClients(cfg.pairings);
+    return await clients[0].client.haul();
+  });
+  ipcMain.handle('catchUp', async () => {
+    const { config, relay: relayMod } = await load();
+    const cfg = config.loadConfig();
+    if (!cfg.pairings.length) return { ok: false, reason: 'unpaired' };
+    const backfill = await import('../src/backfill.mjs');
+    const dir = path.join(path.dirname(cfg.logPath), 'logbackups');
+    const back = backfill.scanLogs(dir);
+    const cur = backfill.scanFile(cfg.logPath);
+    const events = [...back.events, ...cur];
+    if (!events.length) return { ok: true, files: back.files, found: 0, sent: 0 };
+    const clients = relayMod.makeClients(cfg.pairings);
+    let sent = 0;
+    for (const { client } of clients) { client.enqueueAll(events); const r = await client.flush(); if (r.ok) sent += (r.sent || 0); }
+    return { ok: true, files: back.files, found: events.length, sent };
+  });
     ipcMain.handle('getLoginItem', () => { try { return { openAtLogin: app.getLoginItemSettings().openAtLogin }; } catch { return { openAtLogin: false }; } });
     ipcMain.handle('setLoginItem', (_e, on) => { try { app.setLoginItemSettings({ openAtLogin: !!on, openAsHidden: true }); } catch {} return { ok: true }; });
     startRelay(); setupAutoUpdate();

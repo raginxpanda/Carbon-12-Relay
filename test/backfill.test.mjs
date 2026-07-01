@@ -15,3 +15,14 @@ test('scanLogs extracts scoped events across multiple log files', () => {
 test('scanLogs handles a missing folder gracefully', () => {
   assert.deepEqual(scanLogs('/no/such/dir'), { files: 0, events: [] });
 });
+import { scanFile } from '../src/backfill.mjs';
+import { mkdtempSync as mkd2, writeFileSync as wf2, rmSync as rm2 } from 'node:fs';
+test('scanFile parses a single log (Saint\'s real blueprint line)', () => {
+  const dir = mkd2(join(tmpdir(), 'c12sf-'));
+  const f = join(dir, 'Game.log');
+  wf2(f, '<2026-07-01T02:43:09.630Z> [Notice] <SHUDEvent_OnNotification> Added notification "Received Blueprint: Geist Armor Core Forest: " [33] to queue.\n');
+  const ev = scanFile(f);
+  assert.equal(ev.length, 1);
+  assert.equal(ev[0].name, 'Geist Armor Core Forest');
+  rm2(dir, { recursive: true, force: true });
+});

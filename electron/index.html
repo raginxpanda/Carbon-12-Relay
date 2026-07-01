@@ -16,7 +16,7 @@
  summary{cursor:pointer}.chk{display:flex;align-items:center;gap:8px}.chk input{width:auto;margin:0}
 </style></head>
 <body>
- <header><img src="icon.png" width="20" height="20"><b>CARBON-12 RELAY</b><span id="dot" class="dot off"></span><span id="state" class="hint">stopped</span></header>
+ <header><img src="icon.png" width="20" height="20"><b>CARBON-12 RELAY</b><span id="dot" class="dot off"></span><span id="state" class="hint">stopped</span><span id="ver" class="hint" style="margin-left:auto"></span></header>
  <main>
   <div class="card">
    <div class="hint" style="margin-bottom:10px">Paired orgs. Add one token per org you want to sync to (Dashboard \u2192 Companion \u2192 Devices, then click Pair desktop app or paste the token here).</div>
@@ -29,9 +29,17 @@
     <button class="primary" id="p-add" style="margin-top:8px;width:100%">Add org</button>
    </div>
   </div>
+  <div class="card"><label>Your haul</label>
+   <div id="haul"><span class="hint">start the relay to load your blueprints</span></div>
+  </div>
   <div class="card"><label>Connection</label><div id="health"><span class="hint">not started</span></div></div>
   <div class="row"><button class="primary" id="start">Start</button><button class="warn" id="stop">Stop</button><button id="digest">Last digest</button></div>
   <div class="card"><label>Game.log path</label><input type="text" id="logPath"><button id="save-log" style="width:100%">Save path</button></div>
+  <div class="card"><label>Catch up</label>
+   <div class="hint" style="margin-bottom:8px">Pull blueprints from your past sessions (logbackups) and current log into your org(s).</div>
+   <button id="catchup" style="width:100%">Catch up on past sessions</button>
+   <div id="catchup-result" class="hint" style="margin-top:8px"></div>
+  </div>
   <div class="card"><label>Startup</label><div class="chk"><input type="checkbox" id="launch"><span>Launch at login (starts hidden in the tray)</span></div></div>
   <div><label>Activity</label><div id="log"></div></div>
  </main>
@@ -54,12 +62,25 @@
    await window.relay.addPairing({ label:$('p-label').value.trim(), token, endpoint:($('p-endpoint').value.trim()||undefined) });
    $('p-token').value=''; $('p-label').value=''; line('org added'); refresh(); };
  $('save-log').onclick=async()=>{ await window.relay.saveLogPath($('logPath').value.trim()); line('log path saved'); };
- $('start').onclick=async()=>{ const r=await window.relay.start(); setState(r.ok); line(r.ok?'started':'cannot start: '+(r.reason||'error')); };
+ $('start').onclick=async()=>{ const r=await window.relay.start(); setState(r.ok); line(r.ok?'started':'cannot start: '+(r.reason||'error')); if(r.ok) loadHaul(); };
  $('stop').onclick=async()=>{ await window.relay.stop(); setState(false); };
  $('digest').onclick=async()=> line(await window.relay.digest());
+ $('catchup').onclick=async()=>{ const b=$('catchup'); b.disabled=true; $('catchup-result').textContent='Scanning past sessions\u2026';
+   const r=await window.relay.catchUp(); b.disabled=false;
+   if(!r.ok){ $('catchup-result').textContent = r.reason==='unpaired'?'Add an org first.':'Catch-up failed.'; }
+   else if(!r.found){ $('catchup-result').textContent='Scanned '+r.files+' backup log(s) \u2014 no blueprints found in them.'; }
+   else { $('catchup-result').textContent='Scanned '+r.files+' backup log(s), sent '+r.sent+' event(s) to your org(s).'; }
+   line('catch-up: '+$('catchup-result').textContent); loadHaul(); };
  $('launch').onchange=async()=>{ await window.relay.setLoginItem($('launch').checked); line('launch at login: '+($('launch').checked?'on':'off')); };
  window.relay.onStatus((l)=>{ line(l); if(/running|started/.test(l)) setState(true); if(/stopped/.test(l)) setState(false); });
  window.relay.onRefresh(refresh);
+async function loadHaul(){ const box=$('haul'); if(!box) return;
+   const r=await window.relay.haul().catch(()=>({ok:false}));
+   if(!r.ok){ box.innerHTML='<span class="hint">'+(r.reason==='unpaired'?'add an org first':'pair + start to load your haul')+'</span>'; return; }
+   const recent=(r.recent||[]).slice(0,10);
+   box.innerHTML='<div style="display:flex;gap:18px;margin-bottom:8px;"><div><div style="font-size:22px;font-weight:800;color:var(--blue)">'+r.count+'</div><div class="hint">blueprints in '+(r.org||'your org')+'</div></div></div>'+
+     (recent.length?('<div class="hint" style="margin-bottom:4px">recent</div>'+recent.map(function(n){return '<div style="font-size:12px;color:#cfe0ee;padding:2px 0;">\u25b8 '+n+'</div>';}).join('')):'<span class="hint">none yet \u2014 earn one or hit Catch up</span>');
+ }
  window.relay.onHealth((arr)=>{ const box=$('health'); if(!box) return;
    if(!arr||!arr.length){ box.innerHTML='<span class="hint">not started</span>'; return; }
    box.innerHTML=arr.map((h)=>{ const ago=h.agoMs==null?'no sync yet':'synced '+relAgo(h.agoMs)+' ago'; const ok=(h.status==='ok'||h.status==='idle');

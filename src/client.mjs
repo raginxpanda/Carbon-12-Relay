@@ -19,6 +19,18 @@ export class IngestClient {
     let body = {}; try { body = await res.json(); } catch {}
     return { ok: true, ...body };
   }
+  haulUrl() { return this.endpoint ? this.endpoint.replace(/\/ingest(\/?)$/, '/haul$1') : null; }
+  async haul() {
+    const url = this.haulUrl();
+    if (!url || !this.token) return { ok: false, reason: 'unconfigured' };
+    let res;
+    try { res = await this.fetch(url, { method: 'GET', headers: { Authorization: `Bearer ${this.token}` } }); }
+    catch (e) { return { ok: false, reason: 'network', error: e.message }; }
+    if (res.status === 401) return { ok: false, reason: 'unauthorized' };
+    if (!res.ok) return { ok: false, reason: 'http', status: res.status };
+    let body = {}; try { body = await res.json(); } catch {}
+    return { ok: true, ...body };
+  }
   async flush() {
     if (!this.queue.length) return { sent: 0, ok: true };
     if (!this.endpoint || !this.token) { this.lastStatus = 'unconfigured'; return { sent: 0, ok: false, reason: 'unconfigured' }; }
