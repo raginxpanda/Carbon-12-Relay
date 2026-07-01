@@ -5,7 +5,7 @@ export const CONFIG_PATH = process.env.CARBON12_CONFIG || join(homedir(), '.carb
 export function defaultEndpoint() { return process.env.CARBON12_ENDPOINT || 'https://carbon-12.gg/dashboard/api/companion/ingest'; }
 export function defaultLogPath() { return process.env.SC_LOG || 'C:\\Program Files\\Roberts Space Industries\\StarCitizen\\LIVE\\Game.log'; }
 export function loadConfig(path = CONFIG_PATH) {
-  const base = { pairings: [], logPath: defaultLogPath(), flushMs: 5000 };
+  const base = { pairings: [], logPath: defaultLogPath(), logBackupsPath: '', flushMs: 5000 };
   let raw = {};
   if (existsSync(path)) { try { raw = JSON.parse(readFileSync(path, 'utf8')); } catch {} }
   const cfg = { ...base, ...raw };
@@ -26,3 +26,15 @@ export function addPairing(cfg, { label, token, endpoint } = {}) {
   return cfg;
 }
 export function removePairing(cfg, index) { if (index >= 0 && index < cfg.pairings.length) cfg.pairings.splice(index, 1); return cfg; }
+
+// Where catch-up scans for historical logs. Priority:
+//   1) explicit logBackupsPath the user set
+//   2) a 'logbackups' folder next to Game.log (SC default)
+export function resolveBackupsDir(cfg, pathMod) {
+  const { join, dirname } = pathMod;
+  if (cfg.logBackupsPath && String(cfg.logBackupsPath).trim()) return cfg.logBackupsPath.trim();
+  if (cfg.logPath) return join(dirname(cfg.logPath), 'logbackups');
+  return '';
+}
+
+export function setLogBackupsPath(cfg, p) { cfg.logBackupsPath = p ? String(p).trim() : ''; return cfg; }

@@ -77,10 +77,11 @@ else {
     tray = new Tray(img); tray.setToolTip(`Carbon-12 Relay v${(() => { try { return app.getVersion(); } catch { return '?'; } })()}`); tray.on('click', createWindow); updateTray(false); createWindow();
     ipcMain.handle('getVersion', () => { try { return app.getVersion(); } catch { return '?'; } });
   ipcMain.handle('getConfig', async () => { const { config } = await load(); const c = config.loadConfig();
-      return { logPath: c.logPath, pairings: c.pairings.map((p) => ({ label: p.label, endpoint: p.endpoint, tokenMasked: '\u2022\u2022\u2022\u2022' + String(p.token).slice(-4) })) }; });
+      return { logPath: c.logPath, logBackupsPath: c.logBackupsPath || '', pairings: c.pairings.map((p) => ({ label: p.label, endpoint: p.endpoint, tokenMasked: '\u2022\u2022\u2022\u2022' + String(p.token).slice(-4) })) }; });
     ipcMain.handle('addPairing', async (_e, patch) => { const { config } = await load(); const cfg = config.loadConfig(); config.addPairing(cfg, patch); config.saveConfig(cfg); return { ok: true }; });
     ipcMain.handle('removePairing', async (_e, i) => { const { config } = await load(); const cfg = config.loadConfig(); config.removePairing(cfg, i); config.saveConfig(cfg); return { ok: true }; });
     ipcMain.handle('saveLogPath', async (_e, p) => { const { config } = await load(); const cfg = config.loadConfig(); cfg.logPath = p; config.saveConfig(cfg); return { ok: true }; });
+    ipcMain.handle('saveLogBackupsPath', async (_e, p) => { const { config } = await load(); const cfg = config.loadConfig(); config.setLogBackupsPath(cfg, p); config.saveConfig(cfg); return { ok: true }; });
     ipcMain.handle('start', () => startRelay());
     ipcMain.handle('stop', () => { stopRelay(); return { ok: true }; });
     ipcMain.handle('digest', async () => { const { store, digest } = await load(); return digest.formatDigest(store.mostRecentSession()) || 'No recorded haul yet.'; });
@@ -96,15 +97,15 @@ else {
     const cfg = config.loadConfig();
     if (!cfg.pairings.length) return { ok: false, reason: 'unpaired' };
     const backfill = await import('../src/backfill.mjs');
-    const dir = path.join(path.dirname(cfg.logPath), 'logbackups');
+    const dir = config.resolveBackupsDir(cfg, path);
     const back = backfill.scanLogs(dir);
     const cur = backfill.scanFile(cfg.logPath);
     const events = [...back.events, ...cur];
-    if (!events.length) return { ok: true, files: back.files, found: 0, sent: 0 };
+    if (!events.length) return { ok: true, files: back.files, found: 0, sent: 0, dir, rawLines: back.rawLines || 0, allFiles: back.allFiles || 0, scanError: back.error || null };
     const clients = relayMod.makeClients(cfg.pairings);
     let sent = 0;
     for (const { client } of clients) { client.enqueueAll(events); const r = await client.flush(); if (r.ok) sent += (r.sent || 0); }
-    return { ok: true, files: back.files, found: events.length, sent };
+    return { ok: true, files: back.files, found: events.length, sent, dir, rawLines: back.rawLines || 0, allFiles: back.allFiles || 0 };
   });
     ipcMain.handle('getLoginItem', () => { try { return { openAtLogin: app.getLoginItemSettings().openAtLogin }; } catch { return { openAtLogin: false }; } });
     ipcMain.handle('setLoginItem', (_e, on) => { try { app.setLoginItemSettings({ openAtLogin: !!on, openAsHidden: true }); } catch {} return { ok: true }; });
