@@ -1,23 +1,25 @@
-RELAY 0.2.4 — send only unique blueprints (not 1710)
-====================================================
-FIX: scanLogs now dedupes blueprint_earned across ALL log files, so catch-up
-sends ~45 unique blueprints instead of 1710 repeats. (It already worked correctly
-because the BOT dedupes on its side — this just makes the relay stop wasting the
-bandwidth. Your /blueprint mine count does not change; the "sent" number will.)
+RELAY 0.2.5 — visual restyle (ops-console look)
+===============================================
+Full redesign of the app window in the Carbon-12 / Halo-UNSC aesthetic:
+  • Telemetry status bar with live pulse + scanline (the signature)
+  • Haul shown as a glowing instrument readout with category bars + recent list
+  • Numbered ops modules, mono data readouts, disciplined color
+  • Orange reserved for Stop/alerts only; cyan = synced/good
+  • Settings (log path, launch-at-login) collapsed into a drawer
+  • Version badge + logbackups folder field wired in
+
+IMPORTANT: this is a DROP-IN replacement of electron/index.html. Every existing
+function is preserved (pairing, start/stop, catch-up + diagnostics, haul loader,
+health, digest, launch-at-login, logbackups override). No back-end changes.
 
 APPLY (drag & drop)
   1. Close the relay (tray -> Quit).
-  2. Drag "src" into your project folder -> Replace src\backfill.mjs -> Yes.
+  2. Drag "electron" into your project folder -> Replace index.html + preload.cjs -> Yes.
   3. Ship:  npm version patch  then  git push --follow-tags   (publish the draft release)
      or test now:  npm run dist  -> install.
 
-AFTER: hit Catch up again — it should now say "Synced ~45" instead of 1710.
-(Re-running is safe: bot ignores dupes via ON CONFLICT.)
-
-NOTE ON NOTIFICATIONS (separate from this fix)
-  The live blueprint toast fires only when the relay is RUNNING as you earn it
-  (it tails Game.log live). If you earned it while the relay was off, catch-up
-  picks it up but no toast fires. Also check Windows notifications aren't muted
-  (Focus Assist / Do Not Disturb off, notifications allowed for Carbon-12 Relay).
-  Test: with the relay running, earn a BP and watch the Activity log for
-  "blueprint earned: <name>" — if that shows but no toast, it's a Windows setting.
+NOTE ON THE HAUL CATEGORY BARS
+  The bars (Armor/Weapons/etc.) show only if the haul endpoint returns a
+  `categories` object. Right now it returns count + recent, so you'll see the big
+  number + recent list immediately; the category bars light up once we add the
+  category breakdown to the bot's /haul response (small follow-up, r255).

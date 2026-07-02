@@ -1,66 +1,171 @@
-<!doctype html><html><head><meta charset="utf-8"><title>Carbon-12 Relay</title>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Carbon-12 Relay</title>
 <style>
- :root{--bg:#0b1120;--panel:#121a2e;--line:#1f2d4a;--blue:#4a9eff;--orange:#E8652B;--text:#dbe4f5;--muted:#7d8aa5;--good:#3ddc84}
- *{box-sizing:border-box} body{margin:0;font:14px/1.5 system-ui,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--text)}
- header{padding:16px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px}
- header b{font-size:16px;letter-spacing:.5px} .dot{width:9px;height:9px;border-radius:50%;background:var(--muted)} .dot.on{background:var(--good)} .dot.off{background:var(--orange)}
- main{padding:20px;display:flex;flex-direction:column;gap:16px}
- label{display:block;font-size:12px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px}
- input[type=text],input:not([type]){width:100%;padding:9px 11px;background:var(--panel);border:1px solid var(--line);border-radius:6px;color:var(--text);font:13px monospace;margin-bottom:8px}
- .row{display:flex;gap:10px;flex-wrap:wrap}.row>button{flex:1}
- button{padding:9px 14px;border:1px solid var(--line);background:var(--panel);color:var(--text);border-radius:6px;cursor:pointer;font-weight:600}
- button.primary{background:var(--blue);border-color:var(--blue);color:#04122b}button.warn{border-color:var(--orange);color:var(--orange)}button:hover{filter:brightness(1.1)}
- .hint{font-size:12px;color:var(--muted)}.card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px}
- .prow{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}.prow:last-child{border-bottom:none}
- #log{height:130px;overflow:auto;background:#070d1a;border:1px solid var(--line);border-radius:6px;padding:10px;font:12px/1.5 monospace;color:#9fb3d6;white-space:pre-wrap}
- summary{cursor:pointer}.chk{display:flex;align-items:center;gap:8px}.chk input{width:auto;margin:0}
+ @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600&display=swap');
+ :root{
+  --field:#080c16;--panel:#0d1524;--panel-2:#111c30;--line:#1c2b45;--line-bright:#28406a;
+  --blue:#4a9eff;--blue-dim:#2b5c96;--cyan:#38e0c8;--orange:#E8652B;
+  --text:#c6d4ec;--text-dim:#6d7f9e;--white:#eaf2ff;--good:#38e0c8;
+ }
+ *{box-sizing:border-box} html,body{margin:0}
+ body{background:radial-gradient(1200px 500px at 50% -10%,rgba(74,158,255,.06),transparent 60%),var(--field);
+  color:var(--text);font-family:'Inter',system-ui,sans-serif;font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;min-height:100vh}
+ body::before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.35;
+  background-image:linear-gradient(rgba(40,64,106,.18) 1px,transparent 1px),linear-gradient(90deg,rgba(40,64,106,.18) 1px,transparent 1px);
+  background-size:44px 44px;mask-image:radial-gradient(1000px 700px at 50% 0%,#000 30%,transparent 80%)}
+ .mono{font-family:'JetBrains Mono',monospace;font-variant-numeric:tabular-nums}
+ .app{max-width:560px;margin:0 auto;padding:0 18px 40px;position:relative}
+
+ /* telemetry status bar (signature) */
+ .telemetry{margin-top:18px;border:1px solid var(--line-bright);background:linear-gradient(180deg,var(--panel-2),var(--panel));border-radius:12px 12px 0 0;overflow:hidden;position:relative}
+ .telemetry.live::after{content:"";position:absolute;top:0;left:-40%;width:40%;height:100%;background:linear-gradient(90deg,transparent,rgba(74,158,255,.10),transparent);animation:sweep 4.5s linear infinite}
+ @keyframes sweep{to{left:120%}}
+ @media (prefers-reduced-motion:reduce){.telemetry::after{animation:none;display:none}}
+ .tele-top{display:flex;align-items:center;gap:12px;padding:14px 18px 12px}
+ .badge-c12{width:34px;height:34px;border-radius:8px;flex:none;display:grid;place-items:center;border:1px solid var(--blue-dim);background:rgba(74,158,255,.08);color:var(--blue);font-family:'Rajdhani';font-weight:700;font-size:15px;box-shadow:inset 0 0 12px rgba(74,158,255,.15)}
+ .tele-title{flex:1;min-width:0}
+ .tele-title .name{font-family:'Rajdhani';font-weight:700;font-size:15px;letter-spacing:.22em;color:var(--white)}
+ .tele-title .sub{font-size:11px;color:var(--text-dim);letter-spacing:.06em;margin-top:1px}
+ .ver{font-family:'JetBrains Mono';font-size:11px;color:var(--text-dim);border:1px solid var(--line);padding:3px 8px;border-radius:20px}
+ .link-row{display:flex;align-items:center;gap:10px;padding:10px 18px;border-top:1px solid var(--line);background:rgba(56,224,200,.04)}
+ .pulse{width:9px;height:9px;border-radius:50%;background:var(--text-dim);position:relative;flex:none;transition:background .2s}
+ .telemetry.live .pulse{background:var(--cyan)}
+ .telemetry.live .pulse::before{content:"";position:absolute;inset:-5px;border-radius:50%;border:1px solid var(--cyan);opacity:.5;animation:ping 2.2s ease-out infinite}
+ @keyframes ping{from{transform:scale(.6);opacity:.6}to{transform:scale(1.6);opacity:0}}
+ @media (prefers-reduced-motion:reduce){.pulse::before{animation:none}}
+ .link-label{font-family:'Rajdhani';text-transform:uppercase;letter-spacing:.18em;font-size:12px;color:var(--text-dim);font-weight:600}
+ .telemetry.live .link-label{color:var(--cyan)}
+ .link-meta{margin-left:auto;font-family:'JetBrains Mono';font-size:11px;color:var(--text-dim)}
+
+ /* haul readout */
+ .haul-wrap{border:1px solid var(--line-bright);border-top:none;background:linear-gradient(180deg,var(--panel),var(--field));border-radius:0 0 12px 12px;padding:18px}
+ .haul-lead{display:flex;gap:20px;align-items:flex-start}
+ .haul-num{text-align:center;flex:none;min-width:96px}
+ .haul-num .n{font-family:'Rajdhani';font-weight:700;font-size:56px;line-height:.9;color:var(--blue);text-shadow:0 0 22px rgba(74,158,255,.35)}
+ .haul-num .l{font-family:'Rajdhani';text-transform:uppercase;letter-spacing:.16em;font-size:10px;color:var(--text-dim);margin-top:6px}
+ .haul-cats{flex:1;min-width:0;display:flex;flex-direction:column;gap:7px}
+ .cat{display:flex;align-items:center;gap:10px}
+ .cat .cn{font-family:'Rajdhani';text-transform:uppercase;letter-spacing:.1em;font-size:11px;color:var(--text);width:118px;flex:none}
+ .cat .bar{flex:1;height:7px;border-radius:4px;background:var(--panel-2);overflow:hidden;border:1px solid var(--line)}
+ .cat .bar>i{display:block;height:100%;background:linear-gradient(90deg,var(--blue-dim),var(--blue));border-radius:4px}
+ .cat .cc{font-family:'JetBrains Mono';font-size:12px;color:var(--text-dim);width:26px;text-align:right;flex:none}
+ .haul-recent{margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
+ .haul-recent .rl{font-family:'Rajdhani';text-transform:uppercase;letter-spacing:.14em;font-size:10px;color:var(--text-dim);margin-bottom:6px}
+ .haul-recent .ri{font-family:'JetBrains Mono';font-size:12px;color:#cfe0ee;padding:2px 0}
+
+ /* module */
+ .mod{margin-top:14px;border:1px solid var(--line);background:var(--panel);border-radius:10px;overflow:hidden}
+ .mod>h3{margin:0;padding:11px 16px;font-family:'Rajdhani';text-transform:uppercase;letter-spacing:.18em;font-size:12px;color:var(--text-dim);font-weight:600;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:9px;background:var(--panel-2)}
+ .mod>h3 .idx{font-family:'JetBrains Mono';color:var(--blue-dim);font-size:11px}
+ .mod-body{padding:14px 16px}
+
+ .prow{display:flex;align-items:center;gap:11px;padding:9px 11px;border:1px solid var(--line);border-radius:8px;background:var(--panel-2);margin-bottom:8px}
+ .prow:last-child{margin-bottom:0}
+ .prow .oi{width:8px;height:8px;border-radius:50%;background:var(--cyan);flex:none}
+ .prow b{color:var(--white);font-weight:600}
+ .prow .tk{font-family:'JetBrains Mono';font-size:11px;color:var(--text-dim);margin-left:auto}
+
+ input[type=text],input:not([type]){width:100%;padding:9px 11px;background:#060a13;border:1px solid var(--line);border-radius:7px;color:var(--text);font-family:'JetBrains Mono';font-size:12px;margin-bottom:8px}
+ input:focus{outline:none;border-color:var(--blue-dim)}
+ label.fl{display:block;font-family:'Rajdhani';text-transform:uppercase;letter-spacing:.12em;font-size:10px;color:var(--text-dim);margin-bottom:5px}
+
+ .controls{display:grid;grid-template-columns:2fr 1fr 1fr;gap:9px;margin-top:14px}
+ .btn{font-family:'Rajdhani';text-transform:uppercase;letter-spacing:.14em;font-weight:600;font-size:13px;padding:12px 10px;border-radius:9px;border:1px solid var(--line-bright);background:var(--panel-2);color:var(--text);cursor:pointer;transition:.14s;width:100%}
+ .btn:hover{border-color:var(--blue);color:var(--white)}
+ .btn.go{background:linear-gradient(180deg,rgba(74,158,255,.22),rgba(74,158,255,.08));border-color:var(--blue);color:var(--white);box-shadow:0 0 18px rgba(74,158,255,.14)}
+ .btn.stop:hover{border-color:var(--orange);color:var(--orange)}
+ .btn.wide{grid-column:1/-1}
+
+ .log{font-family:'JetBrains Mono';font-size:12px;line-height:1.7;color:#8fa6cc;background:#060a13;border:1px solid var(--line);border-radius:8px;padding:12px 14px;max-height:150px;overflow:auto;white-space:pre-wrap}
+ .hint{font-size:12px;color:var(--text-dim)}
+
+ details.mod>summary{list-style:none;cursor:pointer;padding:11px 16px;font-family:'Rajdhani';text-transform:uppercase;letter-spacing:.18em;font-size:12px;color:var(--text-dim);font-weight:600;display:flex;align-items:center;gap:9px;background:var(--panel-2)}
+ details.mod>summary::-webkit-details-marker{display:none}
+ details.mod>summary .chev{margin-left:auto;transition:.2s;color:var(--blue-dim)}
+ details.mod[open]>summary .chev{transform:rotate(90deg)}
+ .chk{display:flex;align-items:center;gap:9px;color:var(--text)} .chk input{width:auto;margin:0}
+ .foot{text-align:center;margin-top:18px;font-family:'Rajdhani';text-transform:uppercase;letter-spacing:.2em;font-size:10px;color:var(--text-dim)}
 </style></head>
 <body>
- <header><img src="icon.png" width="20" height="20"><b>CARBON-12 RELAY</b><span id="dot" class="dot off"></span><span id="state" class="hint">stopped</span><span id="ver" class="hint" style="margin-left:auto"></span></header>
- <main>
-  <div class="card">
-   <div class="hint" style="margin-bottom:10px">Paired orgs. Add one token per org you want to sync to (Dashboard \u2192 Companion \u2192 Devices, then click Pair desktop app or paste the token here).</div>
+<div class="app">
+
+ <section class="telemetry" id="telemetry">
+  <div class="tele-top">
+   <div class="badge-c12">C12</div>
+   <div class="tele-title"><div class="name">CARBON&#8209;12 RELAY</div><div class="sub">Star Citizen telemetry link</div></div>
+   <span class="ver" id="ver"></span>
+  </div>
+  <div class="link-row">
+   <span class="pulse" id="dot"></span>
+   <span class="link-label" id="state">stopped</span>
+   <span class="link-meta" id="linkmeta"></span>
+  </div>
+ </section>
+
+ <section class="haul-wrap">
+  <div id="haul"><span class="hint">start the relay to load your blueprints</span></div>
+ </section>
+
+ <div class="controls">
+  <button class="btn go" id="start">&#9658; Start</button>
+  <button class="btn stop" id="stop">Stop</button>
+  <button class="btn" id="digest">Last digest</button>
+ </div>
+
+ <div class="mod"><h3><span class="idx">01</span> Paired orgs</h3>
+  <div class="mod-body">
    <div id="pairings"></div>
    <div style="margin-top:12px">
-    <label>Add org</label>
+    <label class="fl">Add org</label>
     <input type="text" id="p-label" placeholder="Org name (optional)">
     <input type="text" id="p-token" placeholder="paste device token">
-    <details><summary class="hint">Advanced (endpoint)</summary><input type="text" id="p-endpoint" placeholder="https://carbon-12.gg/dashboard/api/companion/ingest" style="margin-top:8px"></details>
-    <button class="primary" id="p-add" style="margin-top:8px;width:100%">Add org</button>
+    <details><summary class="hint" style="cursor:pointer;margin-bottom:8px">Advanced (endpoint)</summary><input type="text" id="p-endpoint" placeholder="https://carbon-12.gg/dashboard/api/companion/ingest"></details>
+    <button class="btn go" id="p-add" style="margin-top:4px">Add org</button>
    </div>
   </div>
-  <div class="card"><label>Your haul</label>
-   <div id="haul"><span class="hint">start the relay to load your blueprints</span></div>
+ </div>
+
+ <div class="mod"><h3><span class="idx">02</span> Catch up</h3>
+  <div class="mod-body">
+   <p class="hint" style="margin:0 0 10px">Pull blueprints from your past sessions (logbackups) and current log into your org(s).</p>
+   <button class="btn wide" id="catchup">Catch up on past sessions</button>
+   <details style="margin-top:10px"><summary class="hint" style="cursor:pointer">Advanced: set logbackups folder</summary>
+    <input type="text" id="logBackupsPath" placeholder="auto-detect next to Game.log" style="margin-top:8px">
+    <button class="btn" id="save-backups">Save logbackups folder</button></details>
+   <div id="catchup-result" class="hint" style="margin-top:10px"></div>
   </div>
-  <div class="card"><label>Connection</label><div id="health"><span class="hint">not started</span></div></div>
-  <div class="row"><button class="primary" id="start">Start</button><button class="warn" id="stop">Stop</button><button id="digest">Last digest</button></div>
-  <div class="card"><label>Game.log path</label><input type="text" id="logPath"><button id="save-log" style="width:100%">Save path</button></div>
-  <div class="card"><label>Catch up</label>
-   <div class="hint" style="margin-bottom:8px">Pull blueprints from your past sessions (logbackups) and current log into your org(s).</div>
-   <button id="catchup" style="width:100%">Catch up on past sessions</button>
-   <details style="margin-top:10px"><summary class="hint">Advanced: set logbackups folder</summary>
-     <input type="text" id="logBackupsPath" placeholder="e.g. D:\\Program Files\\StarCitizen\\LIVE\\logbackups" style="margin-top:8px">
-     <button id="save-backups" style="width:100%">Save logbackups folder</button>
-   </details>
-   <div id="catchup-result" class="hint" style="margin-top:8px"></div>
+ </div>
+
+ <div class="mod"><h3><span class="idx">03</span> Connection</h3><div class="mod-body"><div id="health"><span class="hint">not started</span></div></div></div>
+
+ <div class="mod"><h3><span class="idx">04</span> Activity</h3><div class="mod-body" style="padding:12px"><div class="log" id="log"></div></div></div>
+
+ <details class="mod"><summary><span class="idx">05</span> Settings <span class="chev">&#9656;</span></summary>
+  <div class="mod-body">
+   <label class="fl">Game.log path</label>
+   <input type="text" id="logPath">
+   <button class="btn" id="save-log">Save path</button>
+   <div class="chk" style="margin-top:14px"><input type="checkbox" id="launch"><span>Launch at login (starts hidden in the tray)</span></div>
   </div>
-  <div class="card"><label>Startup</label><div class="chk"><input type="checkbox" id="launch"><span>Launch at login (starts hidden in the tray)</span></div></div>
-  <div><label>Activity</label><div id="log"></div></div>
- </main>
+ </details>
+
+ <div class="foot">Carbon-12 &middot; ops telemetry relay</div>
+</div>
 <script>
  const $=(id)=>document.getElementById(id); const logEl=$('log');
+ const CATS=['Armor','Weapons','Attachments','Ship Components','Misc'];
  function line(t){ logEl.textContent+=(logEl.textContent?'\n':'')+t; logEl.scrollTop=logEl.scrollHeight; }
- function setState(on){ $('dot').className='dot '+(on?'on':'off'); $('state').textContent=on?'running':'stopped'; }
+ function setState(on){ $('telemetry').classList.toggle('live',on); $('state').textContent=on?'Link active':'stopped'; }
  function relAgo(ms){ const s=Math.round(ms/1000); if(s<60)return s+'s'; const m=Math.round(s/60); if(m<60)return m+'m'; return Math.round(m/60)+'h'; }
+
  async function refresh(){
    const c=await window.relay.getConfig(); $('logPath').value=c.logPath||''; if($('logBackupsPath')) $('logBackupsPath').value=c.logBackupsPath||'';
    const box=$('pairings'); box.innerHTML='';
    if(!c.pairings.length){ box.innerHTML='<div class="hint">No orgs yet — add one below.</div>'; }
    else c.pairings.forEach((p,i)=>{ const row=document.createElement('div'); row.className='prow';
-     const left=document.createElement('span'); left.innerHTML='<b>'+(p.label||'Org')+'</b> <span class="hint">'+p.tokenMasked+'</span>';
-     const btn=document.createElement('button'); btn.className='warn'; btn.textContent='Remove';
+     row.innerHTML='<span class="oi"></span><b>'+(p.label||'Org')+'</b><span class="tk">'+p.tokenMasked+'</span>';
+     const btn=document.createElement('button'); btn.className='btn stop'; btn.style.cssText='width:auto;padding:6px 12px;margin-left:10px'; btn.textContent='Remove';
      btn.onclick=async()=>{ await window.relay.removePairing(i); line('removed '+(p.label||'org')); refresh(); };
-     row.appendChild(left); row.appendChild(btn); box.appendChild(row); });
+     row.appendChild(btn); box.appendChild(row); });
  }
  $('p-add').onclick=async()=>{ const token=$('p-token').value.trim(); if(!token){ line('paste a token first'); return; }
    await window.relay.addPairing({ label:$('p-label').value.trim(), token, endpoint:($('p-endpoint').value.trim()||undefined) });
@@ -70,30 +175,37 @@
  $('start').onclick=async()=>{ const r=await window.relay.start(); setState(r.ok); line(r.ok?'started':'cannot start: '+(r.reason||'error')); if(r.ok) loadHaul(); };
  $('stop').onclick=async()=>{ await window.relay.stop(); setState(false); };
  $('digest').onclick=async()=> line(await window.relay.digest());
- $('catchup').onclick=async()=>{ const b=$('catchup'); b.disabled=true; $('catchup-result').textContent='Scanning past sessions\u2026';
+ $('catchup').onclick=async()=>{ const b=$('catchup'); b.disabled=true; $('catchup-result').textContent='Scanning past sessions…';
    const r=await window.relay.catchUp(); b.disabled=false;
    if(!r.ok){ $('catchup-result').textContent = r.reason==='unpaired'?'Add an org first.':'Catch-up failed.'; }
-   else {
-     const diag='dir='+(r.dir||'?')+' | files='+r.files+'/'+(r.allFiles||0)+' | rawLines='+(r.rawLines||0)+' | found='+(r.found||0)+' | unique->sent='+(r.sent||0)+(r.sendError?' | SEND ERROR: '+r.sendError:'');
-     $('catchup-result').textContent = (r.sent? ('Synced '+r.sent+' blueprint(s). ') : 'Nothing synced. ')+diag;
-   }
+   else { const diag='dir='+(r.dir||'?')+' | files='+r.files+'/'+(r.allFiles||0)+' | rawLines='+(r.rawLines||0)+' | found='+(r.found||0)+' | sent='+(r.sent||0)+(r.sendError?' | SEND ERROR: '+r.sendError:'');
+     $('catchup-result').textContent=(r.sent?('Synced '+r.sent+' blueprint(s). '):'Nothing synced. ')+diag; }
    line('catch-up: '+$('catchup-result').textContent); loadHaul(); };
  $('launch').onchange=async()=>{ await window.relay.setLoginItem($('launch').checked); line('launch at login: '+($('launch').checked?'on':'off')); };
  window.relay.onStatus((l)=>{ line(l); if(/running|started/.test(l)) setState(true); if(/stopped/.test(l)) setState(false); });
  window.relay.onRefresh(refresh);
-async function loadHaul(){ const box=$('haul'); if(!box) return;
+
+ async function loadHaul(){ const box=$('haul'); if(!box) return;
    const r=await window.relay.haul().catch(()=>({ok:false}));
    if(!r.ok){ box.innerHTML='<span class="hint">'+(r.reason==='unpaired'?'add an org first':'pair + start to load your haul')+'</span>'; return; }
-   const recent=(r.recent||[]).slice(0,10);
-   box.innerHTML='<div style="display:flex;gap:18px;margin-bottom:8px;"><div><div style="font-size:22px;font-weight:800;color:var(--blue)">'+r.count+'</div><div class="hint">blueprints in '+(r.org||'your org')+'</div></div></div>'+
-     (recent.length?('<div class="hint" style="margin-bottom:4px">recent</div>'+recent.map(function(n){return '<div style="font-size:12px;color:#cfe0ee;padding:2px 0;">\u25b8 '+n+'</div>';}).join('')):'<span class="hint">none yet \u2014 earn one or hit Catch up</span>');
+   const recent=(r.recent||[]).slice(0,6);
+   // category buckets from server-provided categories if present, else just show count
+   let cats=r.categories||null;
+   let catsHtml='';
+   if(cats && typeof cats==='object'){ const max=Math.max(1,...CATS.map(c=>cats[c]||0));
+     catsHtml=CATS.filter(c=>cats[c]).map(c=>'<div class="cat"><span class="cn">'+c+'</span><span class="bar"><i style="width:'+Math.round((cats[c]/max)*100)+'%"></i></span><span class="cc">'+cats[c]+'</span></div>').join(''); }
+   box.innerHTML='<div class="haul-lead"><div class="haul-num"><div class="n">'+r.count+'</div><div class="l">Blueprints'+(r.org?'<br><span style="color:var(--text-dim)">'+r.org+'</span>':'')+'</div></div>'+
+     (catsHtml?'<div class="haul-cats">'+catsHtml+'</div>':'<div class="haul-cats"><span class="hint">'+ (r.count?'':'none yet — earn one or hit Catch up') +'</span></div>')+'</div>'+
+     (recent.length?('<div class="haul-recent"><div class="rl">Recent</div>'+recent.map(function(n){return '<div class="ri">▸ '+n+'</div>';}).join('')):'');
  }
- window.relay.onHealth((arr)=>{ const box=$('health'); if(!box) return;
-   if(!arr||!arr.length){ box.innerHTML='<span class="hint">not started</span>'; return; }
+ window.relay.onHealth((arr)=>{ const box=$('health'); const meta=$('linkmeta'); if(!box) return;
+   if(!arr||!arr.length){ box.innerHTML='<span class="hint">not started</span>'; if(meta) meta.textContent=''; return; }
    box.innerHTML=arr.map((h)=>{ const ago=h.agoMs==null?'no sync yet':'synced '+relAgo(h.agoMs)+' ago'; const ok=(h.status==='ok'||h.status==='idle');
-     return '<div class="prow"><span><b>'+h.label+'</b> <span class="hint">'+ago+' \u00b7 '+h.pending+' queued</span></span><span style="color:'+(ok?'var(--good)':'var(--orange)')+'">'+(ok?'\u25cf':'\u25cb')+' '+h.status+'</span></div>'; }).join('');
+     return '<div class="prow"><span class="oi" style="background:'+(ok?'var(--cyan)':'var(--orange)')+'"></span><b>'+h.label+'</b><span class="tk">'+ago+' · '+h.pending+' queued</span></div>'; }).join('');
+   const p=arr[0]; if(meta&&p){ const ago=p.agoMs==null?'no sync yet':'synced '+relAgo(p.agoMs)+' ago'; meta.textContent=(p.handle?p.handle+' · ':'')+ago+' · '+p.pending+' queued'; }
  });
  (async()=>{ try{ const l=await window.relay.getLoginItem(); $('launch').checked=!!l.openAtLogin; }catch{} })();
- refresh();
  (async()=>{ try{ const v=await window.relay.getVersion(); $('ver').textContent='v'+v; }catch{} })();
+ refresh();
+ loadHaul();
 </script></body></html>
