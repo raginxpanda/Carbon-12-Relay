@@ -31,6 +31,16 @@ export class IngestClient {
     let body = {}; try { body = await res.json(); } catch {}
     return { ok: true, ...body };
   }
+  async drainAll(max = 100) {
+    let total = 0;
+    for (let i = 0; i < max && this.queue.length; i++) {
+      const r = await this.flush();
+      if (!r.ok) return { sent: total, ok: false, reason: r.reason, status: r.status };
+      total += r.sent || 0;
+      if (!r.sent) break;
+    }
+    return { sent: total, ok: true };
+  }
   async flush() {
     if (!this.queue.length) return { sent: 0, ok: true };
     if (!this.endpoint || !this.token) { this.lastStatus = 'unconfigured'; return { sent: 0, ok: false, reason: 'unconfigured' }; }

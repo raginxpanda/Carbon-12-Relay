@@ -100,12 +100,26 @@ else {
     const dir = config.resolveBackupsDir(cfg, path);
     const back = backfill.scanLogs(dir);
     const cur = backfill.scanFile(cfg.logPath);
-    const events = [...back.events, ...cur];
+    const rawEvents = [...back.events, ...cur];
+    // Dedupe blueprint_earned across the WHOLE scan (logs echo the same BP many times,
+    // and the same BP appears across multiple backups). One event per unique name.
+    const seen = new Set();
+    const events = [];
+    for (const ev of rawEvents) {
+      if (ev.type === 'blueprint_earned') {
+        const key = (ev.name || '').trim().toLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+      }
+      events.push(ev);
+    }
+    const rawCount = rawEvents.length;
     if (!events.length) return { ok: true, files: back.files, found: 0, sent: 0, dir, rawLines: back.rawLines || 0, allFiles: back.allFiles || 0, scanError: back.error || null };
     const clients = relayMod.makeClients(cfg.pairings);
     let sent = 0;
-    for (const { client } of clients) { client.enqueueAll(events); const r = await client.flush(); if (r.ok) sent += (r.sent || 0); }
-    return { ok: true, files: back.files, found: events.length, sent, dir, rawLines: back.rawLines || 0, allFiles: back.allFiles || 0 };
+    let lastErr = null;
+    for (const { client } of clients) { client.enqueueAll(events); const r = await client.drainAll(1000); if (r.ok) sent += (r.sent || 0); else lastErr = r.reason + (r.status ? ' ' + r.status : ''); }
+    return { ok: true, files: back.files, found: events.length, rawCount, sent, dir, rawLines: back.rawLines || 0, allFiles: back.allFiles || 0, sendError: lastErr };
   });
     ipcMain.handle('getLoginItem', () => { try { return { openAtLogin: app.getLoginItemSettings().openAtLogin }; } catch { return { openAtLogin: false }; } });
     ipcMain.handle('setLoginItem', (_e, on) => { try { app.setLoginItemSettings({ openAtLogin: !!on, openAsHidden: true }); } catch {} return { ok: true }; });

@@ -41,7 +41,6 @@
    <details style="margin-top:10px"><summary class="hint">Advanced: set logbackups folder</summary>
      <input type="text" id="logBackupsPath" placeholder="e.g. D:\\Program Files\\StarCitizen\\LIVE\\logbackups" style="margin-top:8px">
      <button id="save-backups" style="width:100%">Save logbackups folder</button>
-     <div class="hint" style="margin-top:4px">Leave blank to auto-detect next to your Game.log.</div>
    </details>
    <div id="catchup-result" class="hint" style="margin-top:8px"></div>
   </div>
@@ -75,8 +74,8 @@
    const r=await window.relay.catchUp(); b.disabled=false;
    if(!r.ok){ $('catchup-result').textContent = r.reason==='unpaired'?'Add an org first.':'Catch-up failed.'; }
    else {
-     const diag='dir='+(r.dir||'?')+' | files='+r.files+'/'+(r.allFiles||0)+' | rawLines='+(r.rawLines||0)+' | found='+(r.found||0)+' | sent='+(r.sent||0)+(r.scanError?' | ERROR '+r.scanError:'');
-     $('catchup-result').textContent = (r.found? ('Sent '+r.sent+' of '+r.found+' event(s). ') : 'No events sent. ')+diag;
+     const diag='dir='+(r.dir||'?')+' | files='+r.files+'/'+(r.allFiles||0)+' | rawLines='+(r.rawLines||0)+' | found='+(r.found||0)+' | unique->sent='+(r.sent||0)+(r.sendError?' | SEND ERROR: '+r.sendError:'');
+     $('catchup-result').textContent = (r.sent? ('Synced '+r.sent+' blueprint(s). ') : 'Nothing synced. ')+diag;
    }
    line('catch-up: '+$('catchup-result').textContent); loadHaul(); };
  $('launch').onchange=async()=>{ await window.relay.setLoginItem($('launch').checked); line('launch at login: '+($('launch').checked?'on':'off')); };

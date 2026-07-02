@@ -1,28 +1,25 @@
-RELAY UI PATCH — diagnostics + logbackups folder + version badge
-================================================================
+RELAY 0.2.3 — fixes catch-up "found=1710 sent=0"
+================================================
+TWO bugs fixed:
+  1) DEDUPE: logs echo each blueprint many times + across 173 files -> that's why
+     "found" was 1710. Now deduped to unique blueprint names before sending.
+  2) DRAIN: old catch-up sent only ONE batch of 100 then stopped. Now it loops
+     until the whole queue is sent (drainAll).
+  Plus: catch-up now shows a SEND ERROR reason if the bot rejects a batch.
 
-These are your OWN index.html and preload.cjs, patched. They finish wiring the
-0.2.2 back end you already shipped, so Catch up will now SHOW what it's doing.
-
-APPLY
+APPLY (drag & drop)
   1. Close the relay (tray -> Quit).
-  2. Drag the "electron" folder into your project folder -> Replace files -> Yes.
-     (Overwrites electron\index.html and electron\preload.cjs only.)
-  3. Bump + ship:  npm version patch   then   git push --follow-tags
-     (this makes 0.2.3; auto-update pulls it — remember to Publish the draft release)
-     -- OR to test right now without shipping:  npm run dist  then install dist\...Setup 0.2.3.exe
+  2. Drag "src" and "electron" into your project folder -> Replace -> Yes.
+  3. Ship:  npm version patch   then   git push --follow-tags   (publish the draft release)
+     or test now:  npm run dist  -> install dist\...Setup.exe
 
-WHAT CHANGED
-  - Catch up now prints:  dir=... | files=X/Y | rawLines=N | found=N | sent=N
-  - New "Advanced: set logbackups folder" box under Catch up (blank = auto-detect)
-  - Version badge in the header now actually shows (top-right), so you can confirm the build
+THEN hit Catch up and read the line:
+  - "Synced N blueprint(s)"  + sent>0        -> WORKING. Check /blueprint mine.
+  - "Nothing synced ... SEND ERROR: <reason>" -> tell me the reason:
+        unauthorized  -> regenerate token in quarters (yours was shared in chat anyway)
+        http 500      -> bot error on ingest -> I fix the bot
+        http 413      -> payload too big -> lower batch (tell me)
+        network       -> endpoint/connectivity
 
-READ THE RESULT (this is the whole point)
-  Hit Catch up and read the line:
-    files=0                  -> scanning wrong/empty folder -> type your logbackups path in the box, Save, retry
-    files=172 rawLines=0     -> reading files but not seeing the blueprint text (encoding) -> tell me
-    rawLines>0  found=0      -> parser problem (older parser) -> tell me the numbers
-    found>0  sent=0          -> send/auth -> regenerate token in quarters
-    found>0  sent>0          -> WORKING; check /blueprint mine
-
-Tell me the exact line it prints and we'll close this out.
+Note: after this, /blueprint mine should fill. The bot dedupes on its side too,
+so re-running catch-up is safe (no doubles).
