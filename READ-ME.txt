@@ -1,0 +1,28 @@
+RELAY UI PATCH — diagnostics + logbackups folder + version badge
+================================================================
+
+These are your OWN index.html and preload.cjs, patched. They finish wiring the
+0.2.2 back end you already shipped, so Catch up will now SHOW what it's doing.
+
+APPLY
+  1. Close the relay (tray -> Quit).
+  2. Drag the "electron" folder into your project folder -> Replace files -> Yes.
+     (Overwrites electron\index.html and electron\preload.cjs only.)
+  3. Bump + ship:  npm version patch   then   git push --follow-tags
+     (this makes 0.2.3; auto-update pulls it — remember to Publish the draft release)
+     -- OR to test right now without shipping:  npm run dist  then install dist\...Setup 0.2.3.exe
+
+WHAT CHANGED
+  - Catch up now prints:  dir=... | files=X/Y | rawLines=N | found=N | sent=N
+  - New "Advanced: set logbackups folder" box under Catch up (blank = auto-detect)
+  - Version badge in the header now actually shows (top-right), so you can confirm the build
+
+READ THE RESULT (this is the whole point)
+  Hit Catch up and read the line:
+    files=0                  -> scanning wrong/empty folder -> type your logbackups path in the box, Save, retry
+    files=172 rawLines=0     -> reading files but not seeing the blueprint text (encoding) -> tell me
+    rawLines>0  found=0      -> parser problem (older parser) -> tell me the numbers
+    found>0  sent=0          -> send/auth -> regenerate token in quarters
+    found>0  sent>0          -> WORKING; check /blueprint mine
+
+Tell me the exact line it prints and we'll close this out.

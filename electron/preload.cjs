@@ -6,6 +6,7 @@ contextBridge.exposeInMainWorld('relay', {
   addPairing: (patch) => ipcRenderer.invoke('addPairing', patch),
   removePairing: (i) => ipcRenderer.invoke('removePairing', i),
   saveLogPath: (p) => ipcRenderer.invoke('saveLogPath', p),
+  saveLogBackupsPath: (p) => ipcRenderer.invoke('saveLogBackupsPath', p),
   start: () => ipcRenderer.invoke('start'),
   stop: () => ipcRenderer.invoke('stop'),
   digest: () => ipcRenderer.invoke('digest'),

@@ -38,6 +38,11 @@
   <div class="card"><label>Catch up</label>
    <div class="hint" style="margin-bottom:8px">Pull blueprints from your past sessions (logbackups) and current log into your org(s).</div>
    <button id="catchup" style="width:100%">Catch up on past sessions</button>
+   <details style="margin-top:10px"><summary class="hint">Advanced: set logbackups folder</summary>
+     <input type="text" id="logBackupsPath" placeholder="e.g. D:\\Program Files\\StarCitizen\\LIVE\\logbackups" style="margin-top:8px">
+     <button id="save-backups" style="width:100%">Save logbackups folder</button>
+     <div class="hint" style="margin-top:4px">Leave blank to auto-detect next to your Game.log.</div>
+   </details>
    <div id="catchup-result" class="hint" style="margin-top:8px"></div>
   </div>
   <div class="card"><label>Startup</label><div class="chk"><input type="checkbox" id="launch"><span>Launch at login (starts hidden in the tray)</span></div></div>
@@ -49,7 +54,7 @@
  function setState(on){ $('dot').className='dot '+(on?'on':'off'); $('state').textContent=on?'running':'stopped'; }
  function relAgo(ms){ const s=Math.round(ms/1000); if(s<60)return s+'s'; const m=Math.round(s/60); if(m<60)return m+'m'; return Math.round(m/60)+'h'; }
  async function refresh(){
-   const c=await window.relay.getConfig(); $('logPath').value=c.logPath||'';
+   const c=await window.relay.getConfig(); $('logPath').value=c.logPath||''; if($('logBackupsPath')) $('logBackupsPath').value=c.logBackupsPath||'';
    const box=$('pairings'); box.innerHTML='';
    if(!c.pairings.length){ box.innerHTML='<div class="hint">No orgs yet — add one below.</div>'; }
    else c.pairings.forEach((p,i)=>{ const row=document.createElement('div'); row.className='prow';
@@ -62,14 +67,17 @@
    await window.relay.addPairing({ label:$('p-label').value.trim(), token, endpoint:($('p-endpoint').value.trim()||undefined) });
    $('p-token').value=''; $('p-label').value=''; line('org added'); refresh(); };
  $('save-log').onclick=async()=>{ await window.relay.saveLogPath($('logPath').value.trim()); line('log path saved'); };
+ $('save-backups').onclick=async()=>{ await window.relay.saveLogBackupsPath($('logBackupsPath').value.trim()); line('logbackups folder saved'); };
  $('start').onclick=async()=>{ const r=await window.relay.start(); setState(r.ok); line(r.ok?'started':'cannot start: '+(r.reason||'error')); if(r.ok) loadHaul(); };
  $('stop').onclick=async()=>{ await window.relay.stop(); setState(false); };
  $('digest').onclick=async()=> line(await window.relay.digest());
  $('catchup').onclick=async()=>{ const b=$('catchup'); b.disabled=true; $('catchup-result').textContent='Scanning past sessions\u2026';
    const r=await window.relay.catchUp(); b.disabled=false;
    if(!r.ok){ $('catchup-result').textContent = r.reason==='unpaired'?'Add an org first.':'Catch-up failed.'; }
-   else if(!r.found){ $('catchup-result').textContent='Scanned '+r.files+' backup log(s) \u2014 no blueprints found in them.'; }
-   else { $('catchup-result').textContent='Scanned '+r.files+' backup log(s), sent '+r.sent+' event(s) to your org(s).'; }
+   else {
+     const diag='dir='+(r.dir||'?')+' | files='+r.files+'/'+(r.allFiles||0)+' | rawLines='+(r.rawLines||0)+' | found='+(r.found||0)+' | sent='+(r.sent||0)+(r.scanError?' | ERROR '+r.scanError:'');
+     $('catchup-result').textContent = (r.found? ('Sent '+r.sent+' of '+r.found+' event(s). ') : 'No events sent. ')+diag;
+   }
    line('catch-up: '+$('catchup-result').textContent); loadHaul(); };
  $('launch').onchange=async()=>{ await window.relay.setLoginItem($('launch').checked); line('launch at login: '+($('launch').checked?'on':'off')); };
  window.relay.onStatus((l)=>{ line(l); if(/running|started/.test(l)) setState(true); if(/stopped/.test(l)) setState(false); });
@@ -88,4 +96,5 @@ async function loadHaul(){ const box=$('haul'); if(!box) return;
  });
  (async()=>{ try{ const l=await window.relay.getLoginItem(); $('launch').checked=!!l.openAtLogin; }catch{} })();
  refresh();
+ (async()=>{ try{ const v=await window.relay.getVersion(); $('ver').textContent='v'+v; }catch{} })();
 </script></body></html>
