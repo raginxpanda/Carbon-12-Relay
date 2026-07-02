@@ -26,7 +26,19 @@ export function scanLogs(dir, { onScoped } = {}) {
   try { names = readdirSync(dir); } catch (e) { return { files: 0, events: [], error: e.code || String(e), rawLines: 0 }; }
   const files = names.filter((f) => f.toLowerCase().endsWith('.log')).sort();
   const stats = { rawLines: 0 };
+  const raw = [];
+  for (const f of files) raw.push(...scanFile(join(dir, f), { onScoped, stats }));
+  // Dedupe blueprint_earned across ALL files (same BP re-earned in many sessions,
+  // plus in-file echoes) so we return one event per unique blueprint name.
+  const seen = new Set();
   const events = [];
-  for (const f of files) events.push(...scanFile(join(dir, f), { onScoped, stats }));
-  return { files: files.length, events, rawLines: stats.rawLines, allFiles: names.length };
+  for (const ev of raw) {
+    if (ev.type === 'blueprint_earned') {
+      const key = (ev.name || '').trim().toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+    }
+    events.push(ev);
+  }
+  return { files: files.length, events, rawLines: stats.rawLines, allFiles: names.length, rawEvents: raw.length };
 }

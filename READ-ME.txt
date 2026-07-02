@@ -1,25 +1,23 @@
-RELAY 0.2.3 — fixes catch-up "found=1710 sent=0"
-================================================
-TWO bugs fixed:
-  1) DEDUPE: logs echo each blueprint many times + across 173 files -> that's why
-     "found" was 1710. Now deduped to unique blueprint names before sending.
-  2) DRAIN: old catch-up sent only ONE batch of 100 then stopped. Now it loops
-     until the whole queue is sent (drainAll).
-  Plus: catch-up now shows a SEND ERROR reason if the bot rejects a batch.
+RELAY 0.2.4 — send only unique blueprints (not 1710)
+====================================================
+FIX: scanLogs now dedupes blueprint_earned across ALL log files, so catch-up
+sends ~45 unique blueprints instead of 1710 repeats. (It already worked correctly
+because the BOT dedupes on its side — this just makes the relay stop wasting the
+bandwidth. Your /blueprint mine count does not change; the "sent" number will.)
 
 APPLY (drag & drop)
   1. Close the relay (tray -> Quit).
-  2. Drag "src" and "electron" into your project folder -> Replace -> Yes.
-  3. Ship:  npm version patch   then   git push --follow-tags   (publish the draft release)
-     or test now:  npm run dist  -> install dist\...Setup.exe
+  2. Drag "src" into your project folder -> Replace src\backfill.mjs -> Yes.
+  3. Ship:  npm version patch  then  git push --follow-tags   (publish the draft release)
+     or test now:  npm run dist  -> install.
 
-THEN hit Catch up and read the line:
-  - "Synced N blueprint(s)"  + sent>0        -> WORKING. Check /blueprint mine.
-  - "Nothing synced ... SEND ERROR: <reason>" -> tell me the reason:
-        unauthorized  -> regenerate token in quarters (yours was shared in chat anyway)
-        http 500      -> bot error on ingest -> I fix the bot
-        http 413      -> payload too big -> lower batch (tell me)
-        network       -> endpoint/connectivity
+AFTER: hit Catch up again — it should now say "Synced ~45" instead of 1710.
+(Re-running is safe: bot ignores dupes via ON CONFLICT.)
 
-Note: after this, /blueprint mine should fill. The bot dedupes on its side too,
-so re-running catch-up is safe (no doubles).
+NOTE ON NOTIFICATIONS (separate from this fix)
+  The live blueprint toast fires only when the relay is RUNNING as you earn it
+  (it tails Game.log live). If you earned it while the relay was off, catch-up
+  picks it up but no toast fires. Also check Windows notifications aren't muted
+  (Focus Assist / Do Not Disturb off, notifications allowed for Carbon-12 Relay).
+  Test: with the relay running, earn a BP and watch the Activity log for
+  "blueprint earned: <name>" — if that shows but no toast, it's a Windows setting.
