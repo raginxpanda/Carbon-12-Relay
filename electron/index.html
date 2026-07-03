@@ -84,6 +84,68 @@
  details.mod[open]>summary .chev{transform:rotate(90deg)}
  .chk{display:flex;align-items:center;gap:9px;color:var(--text)} .chk input{width:auto;margin:0}
  .foot{text-align:center;margin-top:18px;font-family:'Rajdhani';text-transform:uppercase;letter-spacing:.2em;font-size:10px;color:var(--text-dim)}
+
+ /* catalog modal */
+ .cat-scrim{position:fixed;inset:0;background:rgba(0,0,0,.66);z-index:200;display:none;align-items:center;justify-content:center;padding:18px}
+ .cat-scrim.on{display:flex}
+ .cat-modal{width:min(560px,96vw);max-height:88vh;display:flex;flex-direction:column;border:1px solid var(--line-bright);border-radius:12px;background:#0a0f1a;overflow:hidden}
+ .cat-h{padding:13px 16px;border-bottom:1px solid var(--line);background:var(--panel-2);display:flex;align-items:center;gap:10px}
+ .cat-h .t{font-family:'Rajdhani';text-transform:uppercase;letter-spacing:.16em;font-size:13px;color:var(--white);font-weight:600}
+ .cat-h .x{margin-left:auto;background:none;border:1px solid var(--line);color:var(--text-dim);border-radius:5px;width:28px;height:28px;cursor:pointer}
+ .cat-h .x:hover{color:var(--white);border-color:var(--blue)}
+ .cat-tabs{display:flex;gap:5px;flex-wrap:wrap;padding:10px 16px;border-bottom:1px solid var(--line)}
+ .cat-tab{font-family:'Rajdhani';text-transform:uppercase;letter-spacing:.1em;font-size:11px;padding:5px 10px;border:1px solid var(--line);border-radius:6px;background:var(--panel-2);color:var(--text-dim);cursor:pointer}
+ .cat-tab.on{border-color:var(--blue);color:var(--white);background:rgba(74,158,255,.12)}
+ .cat-list{overflow:auto;padding:10px 16px 16px}
+ .cat-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid rgba(28,43,69,.5)}
+ .cat-row .nm{flex:1;font-size:13px;color:#dfe9f7}
+ .cat-row .cg{font-family:'Rajdhani';text-transform:uppercase;letter-spacing:.08em;font-size:9px;color:var(--blue-dim);border:1px solid var(--line);border-radius:4px;padding:1px 6px}
+ .cat-row .dt{font-family:'JetBrains Mono';font-size:11px;color:var(--text-dim);min-width:74px;text-align:right}
+ .cat-open{margin-top:10px;width:100%;font-family:'Rajdhani';text-transform:uppercase;letter-spacing:.12em;font-size:12px;padding:9px;border:1px solid var(--line-bright);border-radius:8px;background:var(--panel-2);color:var(--text);cursor:pointer}
+ .cat-open:hover{border-color:var(--blue);color:var(--white)}
+ /* kill feed */
+ .kf{font-family:'JetBrains Mono';font-size:12px;line-height:1.7;max-height:150px;overflow:auto}
+ .kf .empty{color:var(--text-dim)}
+ .kf .k{color:var(--cyan)} .kf .d{color:var(--orange)} .kf .tm{color:var(--blue-dim)}
+
+
+ /* start/stop interaction feedback */
+ .btn{position:relative;user-select:none}
+ .btn:active{transform:translateY(1px) scale(.99);filter:brightness(1.15)}
+ .btn.go.running{background:linear-gradient(180deg,rgba(56,224,200,.22),rgba(56,224,200,.06));border-color:var(--cyan);color:#eafff9;box-shadow:0 0 18px rgba(56,224,200,.18)}
+ .btn.go.running .dotled{background:var(--cyan);box-shadow:0 0 8px var(--cyan)}
+ .btn.go.starting{border-color:var(--blue);color:var(--white);opacity:.85}
+ .btn .dotled{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--text-dim);margin-right:7px;vertical-align:middle;transition:.2s}
+ .btn.go.running .dotled{animation:blink 1.6s ease-in-out infinite}
+ @keyframes blink{50%{opacity:.35}}
+ @media (prefers-reduced-motion:reduce){.btn.go.running .dotled{animation:none}}
+ .btn.stop{opacity:.55;transition:.15s}
+ .btn.stop.armed{opacity:1;border-color:var(--line-bright)}
+ .btn.stop.armed:hover{border-color:var(--orange);color:var(--orange)}
+ .btn.flash{animation:flash .35s ease}
+ @keyframes flash{0%{box-shadow:0 0 0 0 rgba(74,158,255,.5)}100%{box-shadow:0 0 0 14px rgba(74,158,255,0)}}
+
+
+ /* first-run onboarding */
+ .onboard{margin-top:14px;border:1px solid var(--blue-dim);border-radius:12px;background:linear-gradient(180deg,rgba(74,158,255,.08),var(--panel));overflow:hidden}
+ .onboard h3{margin:0;padding:13px 16px;font-family:'Rajdhani';text-transform:uppercase;letter-spacing:.16em;font-size:13px;color:var(--white);border-bottom:1px solid var(--line);font-weight:600}
+ .onboard .steps{padding:8px 16px 14px}
+ .ostep{display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-bottom:1px solid rgba(28,43,69,.5)}
+ .ostep:last-child{border-bottom:none}
+ .ostep .num{width:26px;height:26px;flex:none;border-radius:50%;border:1px solid var(--blue-dim);display:grid;place-items:center;font-family:'Rajdhani';font-weight:700;color:var(--blue);font-size:13px}
+ .ostep.done .num{background:var(--cyan);border-color:var(--cyan);color:#04120e}
+ .ostep .txt{flex:1}
+ .ostep .h{font-family:'Rajdhani';text-transform:uppercase;letter-spacing:.08em;font-size:12px;color:var(--white);font-weight:600}
+ .ostep.done .h{color:var(--text-dim);text-decoration:line-through}
+ .ostep .d{font-size:12px;color:var(--text-dim);margin-top:2px}
+ /* friendly error / status pills */
+ .amsg{border-radius:8px;padding:9px 12px;font-size:12px;line-height:1.5;margin-top:8px}
+ .amsg.err{background:rgba(232,101,43,.10);border:1px solid rgba(232,101,43,.4);color:#ffb599}
+ .amsg.warn{background:rgba(74,158,255,.08);border:1px solid var(--blue-dim);color:var(--text)}
+ .amsg .fix{color:var(--white);font-weight:600}
+ .empty-guided{text-align:center;padding:18px 8px;color:var(--text-dim)}
+ .empty-guided .ico{font-size:22px;opacity:.5;margin-bottom:6px}
+
 </style></head>
 <body>
 <div class="app">
@@ -103,10 +165,21 @@
 
  <section class="haul-wrap">
   <div id="haul"><span class="hint">start the relay to load your blueprints</span></div>
+  <button class="cat-open" id="open-catalog" style="display:none">▤ Browse full blueprint catalog</button>
  </section>
 
+ <div class="onboard" id="onboard" style="display:none">
+  <h3>Get started \u2014 3 steps</h3>
+  <div class="steps">
+   <div class="ostep" id="ob1"><div class="num">1</div><div class="txt"><div class="h">Pair your org</div><div class="d">Open <b>carbon-12.gg/quarters/BDC</b> \u2192 Set up desktop relay \u2192 paste the token below.</div></div></div>
+   <div class="ostep" id="ob2"><div class="num">2</div><div class="txt"><div class="h">Point at your Game.log</div><div class="d">Usually auto-detected. If not, set it under Settings.</div></div></div>
+   <div class="ostep" id="ob3"><div class="num">3</div><div class="txt"><div class="h">Hit Start \u2014 then Catch up</div><div class="d">Start runs the relay; Catch up pulls in blueprints from past sessions.</div></div></div>
+  </div>
+ </div>
+
+ <div id="app-msg"></div>
  <div class="controls">
-  <button class="btn go" id="start">&#9658; Start</button>
+  <button class="btn go" id="start"><span class="dotled"></span><span id="start-label">Start</span></button>
   <button class="btn stop" id="stop">Stop</button>
   <button class="btn" id="digest">Last digest</button>
  </div>
@@ -137,14 +210,17 @@
 
  <div class="mod"><h3><span class="idx">03</span> Connection</h3><div class="mod-body"><div id="health"><span class="hint">not started</span></div></div></div>
 
- <div class="mod"><h3><span class="idx">04</span> Activity</h3><div class="mod-body" style="padding:12px"><div class="log" id="log"></div></div></div>
+ <div class="mod"><h3><span class="idx">04</span> Kill feed <span style="margin-left:auto;font-family:'JetBrains Mono';font-size:10px;color:var(--text-dim)">combat</span></h3><div class="mod-body" style="padding:12px"><div class="kf" id="killfeed"><span class="empty">No combat captured yet — kills appear here live once you're flying.</span></div></div></div>
 
- <details class="mod"><summary><span class="idx">05</span> Settings <span class="chev">&#9656;</span></summary>
+ <div class="mod"><h3><span class="idx">05</span> Activity <button id="copylog" style="margin-left:auto;font-family:'Rajdhani';text-transform:uppercase;letter-spacing:.1em;font-size:10px;padding:3px 9px;border:1px solid var(--line);border-radius:5px;background:var(--panel-2);color:var(--text-dim);cursor:pointer">Copy</button></h3><div class="mod-body" style="padding:12px"><div class="log" id="log"></div></div></div>
+
+ <details class="mod"><summary><span class="idx">06</span> Settings <span class="chev">&#9656;</span></summary>
   <div class="mod-body">
    <label class="fl">Game.log path</label>
    <input type="text" id="logPath">
    <button class="btn" id="save-log">Save path</button>
    <div class="chk" style="margin-top:14px"><input type="checkbox" id="launch"><span>Launch at login (starts hidden in the tray)</span></div>
+   <div class="chk" style="margin-top:10px"><input type="checkbox" id="sound"><span>Play a sound when a blueprint or kill is captured</span></div>
   </div>
  </details>
 
@@ -154,13 +230,20 @@
  const $=(id)=>document.getElementById(id); const logEl=$('log');
  const CATS=['Armor','Weapons','Attachments','Ship Components','Misc'];
  function line(t){ logEl.textContent+=(logEl.textContent?'\n':'')+t; logEl.scrollTop=logEl.scrollHeight; }
- function setState(on){ $('telemetry').classList.toggle('live',on); $('state').textContent=on?'Link active':'stopped'; }
+ function setState(on){
+   $('telemetry').classList.toggle('live',on);
+   $('state').textContent=on?'Link active':'stopped';
+   const st=$('start'), sp=$('stop');
+   if(st){ st.classList.toggle('running',on); st.classList.remove('starting'); const lbl=$('start-label'); if(lbl) lbl.textContent=on?'Running':'Start'; }
+   if(sp){ sp.classList.toggle('armed',on); }
+ }
+ function flash(el){ if(!el) return; el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash'); }
  function relAgo(ms){ const s=Math.round(ms/1000); if(s<60)return s+'s'; const m=Math.round(s/60); if(m<60)return m+'m'; return Math.round(m/60)+'h'; }
 
  async function refresh(){
    const c=await window.relay.getConfig(); $('logPath').value=c.logPath||''; if($('logBackupsPath')) $('logBackupsPath').value=c.logBackupsPath||'';
    const box=$('pairings'); box.innerHTML='';
-   if(!c.pairings.length){ box.innerHTML='<div class="hint">No orgs yet — add one below.</div>'; }
+   if(!c.pairings.length){ box.innerHTML='<div class="empty-guided"><div class="ico">\u2b21</div>No org paired yet.<br>Paste your token below to connect.</div>'; }
    else c.pairings.forEach((p,i)=>{ const row=document.createElement('div'); row.className='prow';
      row.innerHTML='<span class="oi"></span><b>'+(p.label||'Org')+'</b><span class="tk">'+p.tokenMasked+'</span>';
      const btn=document.createElement('button'); btn.className='btn stop'; btn.style.cssText='width:auto;padding:6px 12px;margin-left:10px'; btn.textContent='Remove';
@@ -172,8 +255,15 @@
    $('p-token').value=''; $('p-label').value=''; line('org added'); refresh(); };
  $('save-log').onclick=async()=>{ await window.relay.saveLogPath($('logPath').value.trim()); line('log path saved'); };
  $('save-backups').onclick=async()=>{ await window.relay.saveLogBackupsPath($('logBackupsPath').value.trim()); line('logbackups folder saved'); };
- $('start').onclick=async()=>{ const r=await window.relay.start(); setState(r.ok); line(r.ok?'started':'cannot start: '+(r.reason||'error')); if(r.ok) loadHaul(); };
- $('stop').onclick=async()=>{ await window.relay.stop(); setState(false); };
+ $('start').onclick=async()=>{
+   const st=$('start'); if(st.classList.contains('running')) return; // already running
+   flash(st); st.classList.add('starting'); const lbl=$('start-label'); if(lbl) lbl.textContent='Starting…';
+   const r=await window.relay.start();
+   setState(r.ok);
+   if(r.ok){ appMsg(null); line('started'); loadHaul(); } else { appMsg(r.reason||'error'); line('cannot start: '+(r.reason||'error')); }
+   updateOnboarding();
+ };
+ $('stop').onclick=async()=>{ flash($('stop')); await window.relay.stop(); setState(false); line('stopped'); updateOnboarding(); };
  $('digest').onclick=async()=> line(await window.relay.digest());
  $('catchup').onclick=async()=>{ const b=$('catchup'); b.disabled=true; $('catchup-result').textContent='Scanning past sessions…';
    const r=await window.relay.catchUp(); b.disabled=false;
@@ -182,12 +272,76 @@
      $('catchup-result').textContent=(r.sent?('Synced '+r.sent+' blueprint(s). '):'Nothing synced. ')+diag; }
    line('catch-up: '+$('catchup-result').textContent); loadHaul(); };
  $('launch').onchange=async()=>{ await window.relay.setLoginItem($('launch').checked); line('launch at login: '+($('launch').checked?'on':'off')); };
- window.relay.onStatus((l)=>{ line(l); if(/running|started/.test(l)) setState(true); if(/stopped/.test(l)) setState(false); });
+ if($('sound')) $('sound').onchange=async()=>{ SOUND_ON=$('sound').checked; await window.relay.setSound(SOUND_ON); if(SOUND_ON) blip('bp'); line('capture sound: '+(SOUND_ON?'on':'off')); };
+ window.relay.onStatus((l)=>{ line(l);
+   if(/blueprint earned/i.test(l)) blip('bp');
+   if(/kill|killed|destroyed|death/i.test(l)){ blip('kill'); const kf=$('killfeed'); if(kf){ if(kf.querySelector('.empty')) kf.innerHTML=''; const t=new Date().toLocaleTimeString(); kf.innerHTML='<div><span class="tm">'+t+'</span> '+l.replace(/</g,'&lt;')+'</div>'+kf.innerHTML; } } if(/running|started/.test(l)) setState(true); if(/stopped/.test(l)) setState(false); });
  window.relay.onRefresh(refresh);
+
+
+ let CATALOG=[]; const ALLCATS=['All','Armor','Weapons','Attachments','Ship Components','Misc'];
+ function fmtDate(iso){ if(!iso) return '—'; try{ const d=new Date(iso); return d.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'2-digit'}); }catch{ return '—'; } }
+ function renderCatalog(cat){
+   const list=$('cat-list'); if(!list) return;
+   let rows=CATALOG.slice(); if(cat&&cat!=='All') rows=rows.filter(i=>i.category===cat);
+   rows.sort((a,b)=> String(b.earnedAt||'').localeCompare(String(a.earnedAt||'')) || a.name.localeCompare(b.name));
+   list.innerHTML = rows.length? rows.map(i=>'<div class="cat-row"><span class="nm">'+i.name+'</span><span class="cg">'+i.category+'</span><span class="dt">'+fmtDate(i.earnedAt)+'</span></div>').join('') : '<div class="hint" style="padding:12px 0">Nothing here yet.</div>';
+ }
+ function openCatalog(){
+   const tabs=$('cat-tabs'); const counts={}; CATALOG.forEach(i=>counts[i.category]=(counts[i.category]||0)+1);
+   tabs.innerHTML=ALLCATS.map(c=>{ const n=c==='All'?CATALOG.length:(counts[c]||0); return '<button class="cat-tab'+(c==='All'?' on':'')+'" data-c="'+c+'">'+c+' ('+n+')</button>'; }).join('');
+   tabs.querySelectorAll('.cat-tab').forEach(b=>b.onclick=()=>{ tabs.querySelectorAll('.cat-tab').forEach(x=>x.classList.remove('on')); b.classList.add('on'); renderCatalog(b.dataset.c); });
+   $('cat-count').textContent=CATALOG.length+' owned';
+   renderCatalog('All'); $('cat-scrim').classList.add('on');
+ }
+
+
+
+ let SOUND_ON=false;
+ (async()=>{ try{ const s=await window.relay.getSound(); SOUND_ON=!!s.on; const el=$('sound'); if(el) el.checked=SOUND_ON; }catch{} })();
+ let _actx=null;
+ function blip(kind){
+   if(!SOUND_ON) return;
+   try{
+     _actx=_actx||new (window.AudioContext||window.webkitAudioContext)();
+     const t=_actx.currentTime, o=_actx.createOscillator(), g=_actx.createGain();
+     // blueprint = rising two-tone; kill = lower single thunk
+     o.type='sine';
+     if(kind==='kill'){ o.frequency.setValueAtTime(320,t); o.frequency.exponentialRampToValueAtTime(180,t+0.12); }
+     else { o.frequency.setValueAtTime(660,t); o.frequency.exponentialRampToValueAtTime(990,t+0.10); }
+     g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.12,t+0.02); g.gain.exponentialRampToValueAtTime(0.0001,t+0.22);
+     o.connect(g); g.connect(_actx.destination); o.start(t); o.stop(t+0.24);
+   }catch{}
+ }
+
+ const FRIENDLY={
+   unauthorized:{t:'err',m:'<span class="fix">Token rejected.</span> Grab a fresh one from carbon-12.gg/quarters/BDC \u2192 Set up desktop relay, and paste it above.'},
+   unpaired:{t:'warn',m:'<span class="fix">No org paired yet.</span> Add your token above to get started.'},
+   network:{t:'err',m:'<span class="fix">Can\'t reach the server.</span> Check your internet \u2014 the relay will keep retrying and queue anything it captures.'},
+   nolog:{t:'err',m:'<span class="fix">Game.log not found.</span> Set the correct path under Settings (right-click Game.log \u2192 Copy as path).'},
+   error:{t:'err',m:'<span class="fix">Something went wrong starting the relay.</span> Check the Game.log path under Settings.'}
+ };
+ function appMsg(reason){
+   const box=$('app-msg'); if(!box) return;
+   if(!reason){ box.innerHTML=''; return; }
+   const f=FRIENDLY[reason]||FRIENDLY.error;
+   box.innerHTML='<div class="amsg '+f.t+'">'+f.m+'</div>';
+ }
+ async function updateOnboarding(){
+   const ob=$('onboard'); if(!ob) return;
+   let c; try{ c=await window.relay.getConfig(); }catch{ return; }
+   const paired=(c.pairings&&c.pairings.length)>0;
+   const running=$('start')&&$('start').classList.contains('running');
+   ob.style.display = (paired && running) ? 'none' : 'block';
+   $('ob1').classList.toggle('done',paired);
+   $('ob2').classList.toggle('done',!!(c.logPath));
+   $('ob3').classList.toggle('done',running);
+ }
 
  async function loadHaul(){ const box=$('haul'); if(!box) return;
    const r=await window.relay.haul().catch(()=>({ok:false}));
-   if(!r.ok){ box.innerHTML='<span class="hint">'+(r.reason==='unpaired'?'add an org first':'pair + start to load your haul')+'</span>'; return; }
+   if(!r.ok){ box.innerHTML='<div class="empty-guided"><div class="ico">\u25c8</div>'+(r.reason==='unpaired'?'Add an org, then Start to see your blueprints.':'Start the relay to load your haul.')+'</div>'; return; }
+   CATALOG=Array.isArray(r.items)?r.items:[]; if($('open-catalog')) $('open-catalog').style.display=CATALOG.length?'block':'none';
    const recent=(r.recent||[]).slice(0,6);
    // category buckets from server-provided categories if present, else just show count
    let cats=r.categories||null;
@@ -206,6 +360,27 @@
  });
  (async()=>{ try{ const l=await window.relay.getLoginItem(); $('launch').checked=!!l.openAtLogin; }catch{} })();
  (async()=>{ try{ const v=await window.relay.getVersion(); $('ver').textContent='v'+v; }catch{} })();
+ if($('open-catalog')) $('open-catalog').onclick=openCatalog;
+ if($('cat-close')) $('cat-close').onclick=()=>$('cat-scrim').classList.remove('on');
+ if($('cat-scrim')) $('cat-scrim').addEventListener('click',e=>{ if(e.target===$('cat-scrim')) $('cat-scrim').classList.remove('on'); });
+
+ function copyLog(){ try{ navigator.clipboard.writeText(logEl.textContent||''); line('— activity log copied —'); }catch{ line('copy failed'); } }
+ if($('copylog')) $('copylog').onclick=copyLog;
+ if(window.relay.onShortcut) window.relay.onShortcut((a)=>{
+   if(a==='refresh'){ loadHaul(); line('— haul refreshed —'); }
+   else if(a==='catchup'){ const b=$('catchup'); if(b&&!b.disabled) b.click(); }
+   else if(a==='copylog'){ copyLog(); }
+ });
+
  refresh();
  loadHaul();
-</script></body></html>
+ updateOnboarding();
+</script>
+<div class="cat-scrim" id="cat-scrim">
+ <div class="cat-modal">
+  <div class="cat-h"><span class="t">Blueprint Catalog</span><span class="hint" id="cat-count"></span><button class="x" id="cat-close">×</button></div>
+  <div class="cat-tabs" id="cat-tabs"></div>
+  <div class="cat-list" id="cat-list"></div>
+ </div>
+</div>
+</body></html>

@@ -1,25 +1,27 @@
-RELAY 0.2.5 — visual restyle (ops-console look)
-===============================================
-Full redesign of the app window in the Carbon-12 / Halo-UNSC aesthetic:
-  • Telemetry status bar with live pulse + scanline (the signature)
-  • Haul shown as a glowing instrument readout with category bars + recent list
-  • Numbered ops modules, mono data readouts, disciplined color
-  • Orange reserved for Stop/alerts only; cyan = synced/good
-  • Settings (log path, launch-at-login) collapsed into a drawer
-  • Version badge + logbackups folder field wired in
+RELAY 0.2.9 — the little things (menu, shortcuts, copy-log, about, window memory)
+================================================================================
+Final polish batch. Stacks on 0.2.8. Same bot r257.
 
-IMPORTANT: this is a DROP-IN replacement of electron/index.html. Every existing
-function is preserved (pairing, start/stop, catch-up + diagnostics, haul loader,
-health, digest, launch-at-login, logbackups override). No back-end changes.
+WHAT'S NEW
+ • APP MENU — a real menu bar: Relay (Start/Stop/Refresh/Catch up/Copy log),
+   View (reload/zoom/devtools), Help (Open Quarters / About).
+ • KEYBOARD SHORTCUTS —
+     Ctrl+S  Start        Ctrl+.  Stop
+     Ctrl+R  Refresh haul Ctrl+U  Catch up
+     Ctrl+L  Copy activity log
+   (Cmd on Mac.)
+ • COPY LOG — a "Copy" button on the Activity panel (and Ctrl+L). Handy when you
+   need to send me a bug — grab the whole log in one click.
+ • ABOUT DIALOG — Help -> About: version + a button to open your Quarters.
+ • WINDOW MEMORY — the app remembers its size and position between launches
+   (saved to ~/.carbon12-relay/window.json).
 
-APPLY (drag & drop)
-  1. Close the relay (tray -> Quit).
-  2. Drag "electron" into your project folder -> Replace index.html + preload.cjs -> Yes.
-  3. Ship:  npm version patch  then  git push --follow-tags   (publish the draft release)
-     or test now:  npm run dist  -> install.
+FILES (drag "electron" + "src" into project -> Replace all -> Yes)
+  electron/index.html  electron/main.cjs  electron/preload.cjs  src/relay.mjs
 
-NOTE ON THE HAUL CATEGORY BARS
-  The bars (Armor/Weapons/etc.) show only if the haul endpoint returns a
-  `categories` object. Right now it returns count + recent, so you'll see the big
-  number + recent list immediately; the category bars light up once we add the
-  category breakdown to the bot's /haul response (small follow-up, r255).
+SHIP: npm version patch ; git push --follow-tags   (or npm run dist to test)
+
+That's the relay fully polished: ops-console look, welcome-on-launch, real button
+feedback, onboarding + friendly errors, tray status, optional sound, blueprint
+catalog + dates, kill-feed shell, app menu + shortcuts. Next real leap = combat
+parser (needs a real kill line from your Game.log).

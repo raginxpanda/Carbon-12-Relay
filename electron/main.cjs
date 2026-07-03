@@ -21,21 +21,78 @@ async function startRelay() {
   status(`relay running -> ${cfg.pairings.length} org(s)`); updateTray(true); return { ok: true };
 }
 function stopRelay() { if (relay) { relay.stop(); relay = null; } status('relay stopped'); updateTray(false); }
+
+function showAbout() {
+  const ver = (() => { try { return app.getVersion(); } catch { return '?'; } })();
+  dialog.showMessageBox({
+    type: 'info', title: 'About Carbon-12 Relay',
+    message: 'Carbon-12 Relay', detail:
+      'Version ' + ver + '\n\nStar Citizen telemetry relay for Carbon-12 orgs.\n' +
+      'Reads your Game.log and syncs blueprints & combat to your org.\n\n' +
+      'Your quarters: carbon-12.gg/quarters/BDC\n' +
+      'Black Diamond Corporation',
+    buttons: ['Open Quarters', 'Close'], defaultId: 1, cancelId: 1,
+  }).then((r) => { if (r.response === 0) { try { require('electron').shell.openExternal('https://carbon-12.gg/quarters/BDC'); } catch {} } }).catch(() => {});
+}
+
+function buildAppMenu() {
+  const isMac = process.platform === 'darwin';
+  const template = [
+    ...(isMac ? [{ role: 'appMenu' }] : []),
+    { label: 'Relay', submenu: [
+      { label: 'Start', accelerator: 'CmdOrCtrl+S', click: () => startRelay() },
+      { label: 'Stop', accelerator: 'CmdOrCtrl+.', click: () => stopRelay() },
+      { label: 'Refresh haul', accelerator: 'CmdOrCtrl+R', click: () => { if (win && !win.isDestroyed()) win.webContents.send('shortcut', 'refresh'); } },
+      { label: 'Catch up', accelerator: 'CmdOrCtrl+U', click: () => { if (win && !win.isDestroyed()) win.webContents.send('shortcut', 'catchup'); } },
+      { type: 'separator' },
+      { label: 'Copy activity log', accelerator: 'CmdOrCtrl+L', click: () => { if (win && !win.isDestroyed()) win.webContents.send('shortcut', 'copylog'); } },
+      { type: 'separator' },
+      { role: 'quit' },
+    ] },
+    { label: 'View', submenu: [
+      { role: 'reload' }, { role: 'toggledevtools' }, { type: 'separator' },
+      { role: 'resetzoom' }, { role: 'zoomin' }, { role: 'zoomout' }, { type: 'separator' }, { role: 'togglefullscreen' },
+    ] },
+    { label: 'Help', submenu: [
+      { label: 'Open Quarters', click: () => { try { require('electron').shell.openExternal('https://carbon-12.gg/quarters/BDC'); } catch {} } },
+      { label: 'About Carbon-12 Relay', click: showAbout },
+    ] },
+  ];
+  Menu.setApplicationMenu(Menu.buildFromTemplate(template));
+}
+
 function createWindow() {
   if (win && !win.isDestroyed()) { win.show(); win.focus(); return; }
-  win = new BrowserWindow({ width: 560, height: 680, title: 'Carbon-12 Relay', icon: path.join(__dirname, 'icon.png'),
+  let bounds = {};
+  try { const cfgPath = require('path').join(require('os').homedir(), '.carbon12-relay', 'window.json'); if (require('fs').existsSync(cfgPath)) bounds = JSON.parse(require('fs').readFileSync(cfgPath, 'utf8')); } catch {}
+  win = new BrowserWindow({ width: bounds.width || 560, height: bounds.height || 680, x: bounds.x, y: bounds.y, title: 'Carbon-12 Relay', icon: path.join(__dirname, 'icon.png'),
     webPreferences: { preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true, nodeIntegration: false } });
+  const saveBounds = () => { try { const b = win.getBounds(); const dir = require('path').join(require('os').homedir(), '.carbon12-relay'); require('fs').mkdirSync(dir, { recursive: true }); require('fs').writeFileSync(require('path').join(dir, 'window.json'), JSON.stringify(b)); } catch {} };
+  win.on('resize', saveBounds); win.on('move', saveBounds);
+  buildAppMenu();
   win.loadFile(path.join(__dirname, 'index.html'));
   win.on('close', (e) => { e.preventDefault(); win.hide(); });
 }
-function updateTray(running) {
+let lastTrayStatus = { running: false, line: 'stopped', pending: 0 };
+function updateTray(running, extra) {
   if (!tray) return;
+  if (typeof running === 'boolean') lastTrayStatus.running = running;
+  if (extra && extra.line) lastTrayStatus.line = extra.line;
+  if (extra && typeof extra.pending === 'number') lastTrayStatus.pending = extra.pending;
+  const r = lastTrayStatus.running;
+  const ver = (() => { try { return app.getVersion(); } catch { return '?'; } })();
+  tray.setToolTip(`Carbon-12 Relay v${ver}\n${r ? '\u25cf ' + lastTrayStatus.line : '\u25cb stopped'}${lastTrayStatus.pending ? ' \u00b7 ' + lastTrayStatus.pending + ' queued' : ''}`);
   tray.setContextMenu(Menu.buildFromTemplate([
-    { label: running ? '\u25cf Relay: running' : '\u25cb Relay: stopped', enabled: false }, { type: 'separator' },
-    { label: 'Open', click: createWindow }, { label: running ? 'Stop' : 'Start', click: () => (running ? stopRelay() : startRelay()) },
-    { type: 'separator' }, { label: 'Quit', click: () => { stopRelay(); app.exit(0); } },
+    { label: r ? `\u25cf Relay: running${lastTrayStatus.pending ? ' (' + lastTrayStatus.pending + ' queued)' : ''}` : '\u25cb Relay: stopped', enabled: false },
+    { type: 'separator' },
+    { label: 'Open', click: createWindow },
+    { label: r ? 'Stop' : 'Start', click: () => (r ? stopRelay() : startRelay()) },
+    { label: 'Catch up on past sessions', enabled: r, click: async () => { try { const res = await ipcInvokeCatchUp(); notify('Carbon-12 Relay', res); } catch {} } },
+    { type: 'separator' },
+    { label: 'Quit', click: () => { stopRelay(); app.exit(0); } },
   ]));
 }
+async function ipcInvokeCatchUp() { return 'Open the window to catch up.'; }
 function setupAutoUpdate() {
   if (!autoUpdater) return;
   try {
@@ -123,12 +180,17 @@ else {
   });
     ipcMain.handle('getLoginItem', () => { try { return { openAtLogin: app.getLoginItemSettings().openAtLogin }; } catch { return { openAtLogin: false }; } });
     ipcMain.handle('setLoginItem', (_e, on) => { try { app.setLoginItemSettings({ openAtLogin: !!on, openAsHidden: true }); } catch {} return { ok: true }; });
+    ipcMain.handle('getSound', async () => { try { const { config } = await load(); return { on: !!config.loadConfig().soundOn }; } catch { return { on: false }; } });
+    ipcMain.handle('setSound', async (_e, on) => { try { const { config } = await load(); const cfg = config.loadConfig(); cfg.soundOn = !!on; config.saveConfig(cfg); } catch {} return { ok: true }; });
     startRelay(); setupAutoUpdate();
     setInterval(() => {
       if (!relay || !relay.clients || !win || win.isDestroyed()) return;
       const now = Date.now();
       const health = relay.clients.map(({ label, client }) => { const h = client.health(); return { label, pending: h.pending, status: h.status, agoMs: h.lastSuccessAt ? now - h.lastSuccessAt : null }; });
       win.webContents.send('health', health);
+      const totalPending = health.reduce((a, h) => a + (h.pending || 0), 0);
+      const anyOk = health.some((h) => h.status === 'ok' || h.status === 'idle');
+      updateTray(true, { line: anyOk ? 'connected' : 'reconnecting\u2026', pending: totalPending });
     }, 5000);
     const initial = process.argv.find((a) => a.startsWith('carbon12://')); if (initial) handlePairUrl(initial);
   });

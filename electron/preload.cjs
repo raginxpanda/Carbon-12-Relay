@@ -14,7 +14,10 @@ contextBridge.exposeInMainWorld('relay', {
   haul: () => ipcRenderer.invoke('haul'),
   onStatus: (cb) => ipcRenderer.on('status', (_e, line) => cb(line)),
   onRefresh: (cb) => ipcRenderer.on('refresh', () => cb()),
+  onShortcut: (cb) => ipcRenderer.on('shortcut', (_e, a) => cb(a)),
   getLoginItem: () => ipcRenderer.invoke('getLoginItem'),
   setLoginItem: (on) => ipcRenderer.invoke('setLoginItem', on),
+  getSound: () => ipcRenderer.invoke('getSound'),
+  setSound: (on) => ipcRenderer.invoke('setSound', on),
   onHealth: (cb) => ipcRenderer.on('health', (_e, h) => cb(h)),
 });

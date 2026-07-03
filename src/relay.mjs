@@ -29,10 +29,16 @@ export function startRelay({ config, fetchImpl, log = console.log, notify, store
   const tell = notify || ((msg) => log(`\n  \u2605 ${msg}\n`));
   const parser = createParser();
   const clients = makeClients(config.pairings, fetchImpl);
+  const identity = { who: null, org: null };
+  let greetedThisSession = false;
   prune(30, storePath);
   for (const { label, client } of clients) {
     client.whoami().then((r) => {
-      if (r.ok) log(`[${label}] connected \u2713 ${r.org ? '(' + r.org + ')' : ''}`);
+      if (r.ok) {
+        const who = (r.rank ? r.rank + ' ' : '') + (r.handle || r.name || '');
+        log(`[${label}] connected \u2713 ${r.org ? '(' + r.org + ')' : ''}`);
+        if (who.trim()) { identity.who = who.trim(); identity.org = r.org || null; log(`  Welcome back, ${who.trim()}.`); }
+      }
       else if (r.reason === 'unauthorized') log(`[${label}] token rejected \u2717 — regenerate it from the dashboard`);
       else if (r.reason === 'http' && r.status === 404) log(`[${label}] connected (update the bot to enable the token check)`);
       else log(`[${label}] connection check deferred (${r.reason || 'error'})`);
@@ -52,8 +58,15 @@ export function startRelay({ config, fetchImpl, log = console.log, notify, store
   let sessionKey = `launch-${Date.now()}`;
   const stopTail = tailFile(config.logPath, (line) => {
     for (const ev of parser.feed(line)) {
-      if (ev.type === 'handle_detected') log(`identified as ${ev.handle}`);
-      if (ev.type === 'session_start' && ev.sessionId && ev.sessionId !== sessionKey) { emitDigest(sessionByKey(sessionKey, storePath)); sessionKey = ev.sessionId; }
+      if (ev.type === 'handle_detected') {
+        log(`identified as ${ev.handle}`);
+        if (!greetedThisSession) {
+          greetedThisSession = true;
+          const name = identity.who || ev.handle;
+          tell(`Welcome back, ${name}. Carbon-12 relay is live${identity.org ? ' \u00b7 ' + identity.org : ''}.`);
+        }
+      }
+      if (ev.type === 'session_start' && ev.sessionId && ev.sessionId !== sessionKey) { emitDigest(sessionByKey(sessionKey, storePath)); sessionKey = ev.sessionId; greetedThisSession = false; }
       if (SCOPED.has(ev.type)) {
         fanout(ev); recordEvents([ev], { sessionKey, dir: storePath });
         if (ev.type === 'blueprint_earned') { log(`blueprint earned: ${ev.name}`); bpNotifier.push(ev.name); }
