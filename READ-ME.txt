@@ -1,35 +1,19 @@
-RELAY 0.2.12 — location + death tracking ("last seen")
-======================================================
-Pairs with BOT r260. Adds location/death capture built on VERIFIED log lines
-(confirmed present in your real Game.logs via the diagnostic pass).
+RELAY 0.2.13 — pairing endpoint allowlist (security, from Fable's review)
+=========================================================================
+Only electron/main.cjs changed. Drag into your project -> Replace -> Yes.
 
-WHAT'S NEW
- • NEW FILE src/location-parser.mjs — parses three real log signals:
-     - <RequestLocationInventory> Player[you] ... Location[PLACE]  -> "at PLACE"
-     - <[ActorState] Dead> ... ejected from zone 'SHIP' ... destroyed vehicle -> "died in SHIP"
-     - fuel-to-destination / Quantum Drive Arrived -> travel waypoints
-   (It correctly IGNORES the drink-bottle "Place" noise lines.)
- • src/relay.mjs — runs the location parser alongside your existing parser and
-   sends location_update events (added to the SCOPED set).
+FIX — the only real remote-facing hole in the relay
+ The carbon12://pair deep link can be triggered by ANY webpage, with an
+ attacker-chosen label and endpoint. Before, it would happily pair you to an
+ attacker's server (streaming your telemetry there / crediting your data to
+ their org). Now:
+  • Endpoint host is ALLOWLISTED to carbon-12.gg (and www.). Anything else is
+    BLOCKED with a warning, unless you explicitly enable custom endpoints.
+  • The confirm dialog visually distinguishes "official server" (normal) from
+    "CUSTOM SERVER" (loud warning, defaults to Cancel).
+  • Blocks lookalike domains (carbon-12.gg.evil.com etc.) — verified.
 
-WHAT YOU GET (bot side, r260)
- • /whereis member @user   -> last known location ("at Rest Stop · Crusader, 12m ago")
- • /whereis org            -> everyone's last-known position
- • Feeds the eventual death-beacon/QRF and sharpens Nemesis "last seen" data.
-
-HONEST NOTES
- • This is WAYPOINTS, not a live map — SC logs location at inventory access,
-   death, and travel, not continuously. "Last seen" is the right mental model.
- • Location capture only works while you're running the relay AND the game writes
-   these lines (inventory access is frequent; deaths obviously situational).
- • After deploy, CATCH UP re-reads logbackups and backfills last-known positions.
-
-INTEGRATION NOTE (important)
- This drop patches relay.mjs assuming it imports './parser.mjs' and loops
- parser.feed(line) with a `clients` array exposing client.enqueue(ev). That matches
- your running relay. If your local relay.mjs has diverged, just copy the 3 marked
- changes: (1) import parseLocationLine, (2) add 'location_update' to SCOPED,
- (3) the locEv block inside the line loop. location-parser.mjs is standalone.
+ To allow a custom endpoint (self-hosters): set allowCustomEndpoint:true in your
+ relay config. Default is off, which is right for everyone using the official server.
 
 SHIP: npm version patch ; git push --follow-tags
-BOT r260 deploy: npm run migrate (072) -> npm run deploy (/whereis) -> restart.
