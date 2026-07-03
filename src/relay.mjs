@@ -1,9 +1,10 @@
 import { createParser } from './parser.mjs';
+import { parseLocationLine } from './location-parser.mjs';
 import { tailFile } from './tail.mjs';
 import { IngestClient } from './client.mjs';
 import { recordEvents, mostRecentSession, sessionByKey, prune, getState, setState } from './store.mjs';
 import { formatDigest, buildRecap } from './digest.mjs';
-const SCOPED = new Set(['blueprint_earned', 'actor_death']);
+const SCOPED = new Set(['blueprint_earned', 'actor_death', 'location_update']);
 
 // Live per-blueprint desktop toast. Coalesces a burst (SC can grant several at
 // once) into a single notification within `delay` ms.
@@ -29,16 +30,10 @@ export function startRelay({ config, fetchImpl, log = console.log, notify, store
   const tell = notify || ((msg) => log(`\n  \u2605 ${msg}\n`));
   const parser = createParser();
   const clients = makeClients(config.pairings, fetchImpl);
-  const identity = { who: null, org: null };
-  let greetedThisSession = false;
   prune(30, storePath);
   for (const { label, client } of clients) {
     client.whoami().then((r) => {
-      if (r.ok) {
-        const who = (r.rank ? r.rank + ' ' : '') + (r.handle || r.name || '');
-        log(`[${label}] connected \u2713 ${r.org ? '(' + r.org + ')' : ''}`);
-        if (who.trim()) { identity.who = who.trim(); identity.org = r.org || null; log(`  Welcome back, ${who.trim()}.`); }
-      }
+      if (r.ok) log(`[${label}] connected \u2713 ${r.org ? '(' + r.org + ')' : ''}`);
       else if (r.reason === 'unauthorized') log(`[${label}] token rejected \u2717 — regenerate it from the dashboard`);
       else if (r.reason === 'http' && r.status === 404) log(`[${label}] connected (update the bot to enable the token check)`);
       else log(`[${label}] connection check deferred (${r.reason || 'error'})`);
@@ -57,16 +52,16 @@ export function startRelay({ config, fetchImpl, log = console.log, notify, store
   if (showLastOnStart) emitDigest(mostRecentSession(storePath));
   let sessionKey = `launch-${Date.now()}`;
   const stopTail = tailFile(config.logPath, (line) => {
+    // location/death parser runs alongside the main parser on the same line
+    const locEv = parseLocationLine(line);
+    if (locEv) {
+      for (const { client } of clients) client.enqueue(locEv);
+      if (locEv.kind === 'death') log(`died: ${locEv.ship || 'ship lost'}`);
+      else if (locEv.kind === 'location' && locEv.location) log(`location: ${locEv.location}`);
+    }
     for (const ev of parser.feed(line)) {
-      if (ev.type === 'handle_detected') {
-        log(`identified as ${ev.handle}`);
-        if (!greetedThisSession) {
-          greetedThisSession = true;
-          const name = identity.who || ev.handle;
-          tell(`Welcome back, ${name}. Carbon-12 relay is live${identity.org ? ' \u00b7 ' + identity.org : ''}.`);
-        }
-      }
-      if (ev.type === 'session_start' && ev.sessionId && ev.sessionId !== sessionKey) { emitDigest(sessionByKey(sessionKey, storePath)); sessionKey = ev.sessionId; greetedThisSession = false; }
+      if (ev.type === 'handle_detected') log(`identified as ${ev.handle}`);
+      if (ev.type === 'session_start' && ev.sessionId && ev.sessionId !== sessionKey) { emitDigest(sessionByKey(sessionKey, storePath)); sessionKey = ev.sessionId; }
       if (SCOPED.has(ev.type)) {
         fanout(ev); recordEvents([ev], { sessionKey, dir: storePath });
         if (ev.type === 'blueprint_earned') { log(`blueprint earned: ${ev.name}`); bpNotifier.push(ev.name); }

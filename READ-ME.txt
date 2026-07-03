@@ -1,22 +1,35 @@
-RELAY 0.2.11 — send-loop resilience (from Fable's review)
-=========================================================
-Only src/client.mjs changed. Drag it into your project -> Replace -> Yes.
-Pairs with BOT r258. Stacks on all prior drops.
+RELAY 0.2.12 — location + death tracking ("last seen")
+======================================================
+Pairs with BOT r260. Adds location/death capture built on VERIFIED log lines
+(confirmed present in your real Game.logs via the diagnostic pass).
 
-FIXES (the "deferred forever" class of bug that ate a debugging session)
- • BACKOFF: a failing batch now backs off (1s,2s,4s...60s) instead of retrying
-   every 5s forever.
- • 413 SPLIT: an oversize batch is split in half and retried smaller, instead of
-   looping on the same too-big body (the 16KB-limit bug in general form).
- • DEAD-LETTER: after N consecutive failures the poison batch is set aside (with a
-   callback so the UI can show "N events couldn't sync"), so one bad batch can't
-   dam the whole pipe.
- • 401 NO LONGER NUKES THE QUEUE: a transient bad token during a big catch-up used
-   to silently discard everything queued. Now it keeps the events and backs off.
- • Richer health(): failStreak, deadLettered, backingOff — for surfacing in the UI.
+WHAT'S NEW
+ • NEW FILE src/location-parser.mjs — parses three real log signals:
+     - <RequestLocationInventory> Player[you] ... Location[PLACE]  -> "at PLACE"
+     - <[ActorState] Dead> ... ejected from zone 'SHIP' ... destroyed vehicle -> "died in SHIP"
+     - fuel-to-destination / Quantum Drive Arrived -> travel waypoints
+   (It correctly IGNORES the drink-bottle "Place" noise lines.)
+ • src/relay.mjs — runs the location parser alongside your existing parser and
+   sends location_update events (added to the SCOPED set).
 
-NOTE: the onDeadLetter callback is available if you want to wire a UI toast
-("N events couldn't sync — copy log"); main.cjs can pass it when constructing
-clients. Not required — the resilience works without it.
+WHAT YOU GET (bot side, r260)
+ • /whereis member @user   -> last known location ("at Rest Stop · Crusader, 12m ago")
+ • /whereis org            -> everyone's last-known position
+ • Feeds the eventual death-beacon/QRF and sharpens Nemesis "last seen" data.
 
-SHIP: npm version patch ; git push --follow-tags   (or npm run dist to test)
+HONEST NOTES
+ • This is WAYPOINTS, not a live map — SC logs location at inventory access,
+   death, and travel, not continuously. "Last seen" is the right mental model.
+ • Location capture only works while you're running the relay AND the game writes
+   these lines (inventory access is frequent; deaths obviously situational).
+ • After deploy, CATCH UP re-reads logbackups and backfills last-known positions.
+
+INTEGRATION NOTE (important)
+ This drop patches relay.mjs assuming it imports './parser.mjs' and loops
+ parser.feed(line) with a `clients` array exposing client.enqueue(ev). That matches
+ your running relay. If your local relay.mjs has diverged, just copy the 3 marked
+ changes: (1) import parseLocationLine, (2) add 'location_update' to SCOPED,
+ (3) the locEv block inside the line loop. location-parser.mjs is standalone.
+
+SHIP: npm version patch ; git push --follow-tags
+BOT r260 deploy: npm run migrate (072) -> npm run deploy (/whereis) -> restart.
