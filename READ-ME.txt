@@ -1,14 +1,22 @@
-RELAY 0.2.10 — logo + catalog-close fix + collapsible orgs
-==========================================================
-Only electron/index.html changed. Drag it into your project -> Replace -> Yes.
+RELAY 0.2.11 — send-loop resilience (from Fable's review)
+=========================================================
+Only src/client.mjs changed. Drag it into your project -> Replace -> Yes.
+Pairs with BOT r258. Stacks on all prior drops.
 
-FIXES
- 1) Real Carbon-12 logo in the header (was the "C12" text badge). Embedded, no
-    extra file needed.
- 2) BUG FIX: the blueprint catalog X now closes it (before, the close button did
-    nothing because it loaded after the script — now handled by delegation).
-    Also: click the dark backdrop OR press Esc to close.
- 3) "Paired orgs" is now a collapsible dropdown — auto-open when you have no org,
-    auto-collapsed once you're paired (shows a count, click to expand/manage).
+FIXES (the "deferred forever" class of bug that ate a debugging session)
+ • BACKOFF: a failing batch now backs off (1s,2s,4s...60s) instead of retrying
+   every 5s forever.
+ • 413 SPLIT: an oversize batch is split in half and retried smaller, instead of
+   looping on the same too-big body (the 16KB-limit bug in general form).
+ • DEAD-LETTER: after N consecutive failures the poison batch is set aside (with a
+   callback so the UI can show "N events couldn't sync"), so one bad batch can't
+   dam the whole pipe.
+ • 401 NO LONGER NUKES THE QUEUE: a transient bad token during a big catch-up used
+   to silently discard everything queued. Now it keeps the events and backs off.
+ • Richer health(): failStreak, deadLettered, backingOff — for surfacing in the UI.
+
+NOTE: the onDeadLetter callback is available if you want to wire a UI toast
+("N events couldn't sync — copy log"); main.cjs can pass it when constructing
+clients. Not required — the resilience works without it.
 
 SHIP: npm version patch ; git push --follow-tags   (or npm run dist to test)
