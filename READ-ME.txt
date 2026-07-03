@@ -1,27 +1,14 @@
-RELAY 0.2.9 — the little things (menu, shortcuts, copy-log, about, window memory)
-================================================================================
-Final polish batch. Stacks on 0.2.8. Same bot r257.
+RELAY 0.2.10 — logo + catalog-close fix + collapsible orgs
+==========================================================
+Only electron/index.html changed. Drag it into your project -> Replace -> Yes.
 
-WHAT'S NEW
- • APP MENU — a real menu bar: Relay (Start/Stop/Refresh/Catch up/Copy log),
-   View (reload/zoom/devtools), Help (Open Quarters / About).
- • KEYBOARD SHORTCUTS —
-     Ctrl+S  Start        Ctrl+.  Stop
-     Ctrl+R  Refresh haul Ctrl+U  Catch up
-     Ctrl+L  Copy activity log
-   (Cmd on Mac.)
- • COPY LOG — a "Copy" button on the Activity panel (and Ctrl+L). Handy when you
-   need to send me a bug — grab the whole log in one click.
- • ABOUT DIALOG — Help -> About: version + a button to open your Quarters.
- • WINDOW MEMORY — the app remembers its size and position between launches
-   (saved to ~/.carbon12-relay/window.json).
-
-FILES (drag "electron" + "src" into project -> Replace all -> Yes)
-  electron/index.html  electron/main.cjs  electron/preload.cjs  src/relay.mjs
+FIXES
+ 1) Real Carbon-12 logo in the header (was the "C12" text badge). Embedded, no
+    extra file needed.
+ 2) BUG FIX: the blueprint catalog X now closes it (before, the close button did
+    nothing because it loaded after the script — now handled by delegation).
+    Also: click the dark backdrop OR press Esc to close.
+ 3) "Paired orgs" is now a collapsible dropdown — auto-open when you have no org,
+    auto-collapsed once you're paired (shows a count, click to expand/manage).
 
 SHIP: npm version patch ; git push --follow-tags   (or npm run dist to test)
-
-That's the relay fully polished: ops-console look, welcome-on-launch, real button
-feedback, onboarding + friendly errors, tray status, optional sound, blueprint
-catalog + dates, kill-feed shell, app menu + shortcuts. Next real leap = combat
-parser (needs a real kill line from your Game.log).
