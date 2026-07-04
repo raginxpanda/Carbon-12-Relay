@@ -25,7 +25,7 @@ export function makeBlueprintNotifier(tell, delay = 1500) {
 export function makeClients(pairings, fetchImpl) {
   return (pairings || []).map((p) => ({ label: p.label, client: new IngestClient({ endpoint: p.endpoint, token: p.token, fetchImpl }) }));
 }
-export function startRelay({ config, fetchImpl, log = console.log, notify, storePath, statePath, showLastOnStart = true, onHaulChanged } = {}) {
+export function startRelay({ config, fetchImpl, log = console.log, notify, storePath, statePath, showLastOnStart = true } = {}) {
   const tell = notify || ((msg) => log(`\n  \u2605 ${msg}\n`));
   const parser = createParser();
   const clients = makeClients(config.pairings, fetchImpl);
@@ -50,30 +50,22 @@ export function startRelay({ config, fetchImpl, log = console.log, notify, store
   }
   if (showLastOnStart) emitDigest(mostRecentSession(storePath));
   let sessionKey = `launch-${Date.now()}`;
-  let haulDirty = false; // set when a blueprint is captured live; cleared after we refresh the UI count
   const stopTail = tailFile(config.logPath, (line) => {
     for (const ev of parser.feed(line)) {
       if (ev.type === 'handle_detected') log(`identified as ${ev.handle}`);
       if (ev.type === 'session_start' && ev.sessionId && ev.sessionId !== sessionKey) { emitDigest(sessionByKey(sessionKey, storePath)); sessionKey = ev.sessionId; }
       if (SCOPED.has(ev.type)) {
         fanout(ev); recordEvents([ev], { sessionKey, dir: storePath });
-        if (ev.type === 'blueprint_earned') { log(`blueprint earned: ${ev.name}`); bpNotifier.push(ev.name); haulDirty = true; }
+        if (ev.type === 'blueprint_earned') { log(`blueprint earned: ${ev.name}`); bpNotifier.push(ev.name); }
       }
     }
   }, { fromStart: false });
   const timer = setInterval(async () => {
-    let sentSomething = false;
     for (const { label, client } of clients) {
       if (!client.pending) continue;
       const r = await client.flush();
-      if (r.sent) { log(`[${label}] sent ${r.sent} event(s)`); sentSomething = true; }
+      if (r.sent) log(`[${label}] sent ${r.sent} event(s)`);
       else if (!r.ok && r.reason !== 'unconfigured') log(`[${label}] deferred (${r.reason}), ${client.pending} queued`);
-    }
-    // A blueprint was captured live AND we just flushed to the bot — tell the UI to
-    // re-fetch the haul so the on-screen count updates without a manual reload / catch-up.
-    if (haulDirty && sentSomething) {
-      haulDirty = false;
-      if (typeof onHaulChanged === 'function') { try { onHaulChanged(); } catch {} }
     }
   }, config.flushMs || 5000);
   return { stop: () => { stopTail(); clearInterval(timer); bpNotifier.stop(); }, clients, parser };

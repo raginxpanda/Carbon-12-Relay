@@ -1,36 +1,33 @@
-RELAY 0.2.17 — update button now actually closes the app (fix)
-==============================================================
-THE BUG you hit: clicked "Restart & Update", it said to close the app, you kept
-clicking Retry, and it wouldn't close.
+RELAY 0.2.18 — COMBAT PARSER (the big one: kill feed / leaderboard / Nemesis go live)
+=====================================================================================
+Pairs with BOT r266. This is the piece that was blocked for weeks — now unblocked,
+because a real kill-line format got confirmed (cross-checked against an independent
+working kill-feed tool, citizenmon).
 
-ROOT CAUSE: quitAndInstall was called while the app was still holding itself open:
- • the relay's file tail + flush timer were still running,
- • the tray icon was still alive,
- • and the window had a close-interceptor (win.on('close') -> hide to tray) that
-   actively PREVENTED it from closing.
-So Windows couldn't swap the .exe, and the installer sat on the close/retry prompt.
+WHAT'S NEW
+ • NEW FILE src/combat-parser.mjs — parses SC kill lines:
+     <Actor Death> CActor::Kill: 'victim' ... killed by 'killer' ... using 'weapon'
+       ... with damage type 'type'
+   plus vehicle destruction (CVehicle::OnAdvanceDestroyLevel). Emits a NEUTRAL
+   actor_death event (killer + victim). It does NOT decide who "won" — the BOT does
+   that by comparing against your paired handle (correct, since only the bot knows
+   which handle owns this device). Tags obvious NPCs so they don't inflate PvP.
+ • src/relay.mjs — runs the combat parser alongside the location parser.
 
-THE FIX: installUpdate now fully tears down before quitAndInstall —
- 1) stops the relay (releases the log file + timers),
- 2) destroys the tray,
- 3) strips the hide-to-tray close handler and destroys all windows,
- 4) then calls quitAndInstall(isSilent=false, forceRunAfter=true),
- 5) HARD FALLBACK: force-exits after 4s if anything's still alive, so the
-    installer's file lock always clears. (quitAndInstall relaunches the new version.)
-Also: window-all-closed now allows the quit while an update is in progress.
+WHAT LIGHTS UP (all at once, bot r266)
+ • /leaderboard — real kills/deaths/KD
+ • /nemesis ledger + dossier — who keeps killing your org
+ • Session Wrapped — the K/D tiles fill in
+ • (dashboard combat panel + quarters strip if you've wired those views)
 
-CONSOLIDATED: this drop is the current complete electron/ set —
- • main.cjs: pairing allowlist + live-count refresh + update button + THIS fix
- • index.html: recent-ordering fix (0.2.16)
- • preload.cjs: update bridges (0.2.15)
-Shipping this supersedes 0.2.13–0.2.16 for the electron/ files.
-(src/relay.mjs from 0.2.14 is still needed for the live-count fix if not yet shipped.)
+PROVEN END-TO-END (parser → relay event → bot ingest → stored):
+ ✓ your kill counted   ✓ your death counted   ✓ NPC kill NOT counted as PvP
+ ✓ suicide filtered out of K/D   ✓ witnessed kills stored but not miscredited to you
 
-FILES (drag electron/ in -> Replace all -> Yes)
-SHIP: npm version patch ; git push --follow-tags
+DEPLOY: bot r266 (no new migration — kills table already exists) → deploy → restart.
+Relay: drag src/ in → npm version patch → git push --follow-tags.
 
-IMPORTANT: because the OLD (broken) installer is what's on members' machines now,
-the FIRST update to this version may still show the close/retry prompt (the fix
-isn't running yet — the old code is). From THIS version forward, updates close
-cleanly. If it hangs on this one update: close it from Task Manager, and the
-install completes.
+FIRST REAL TEST: play a session where you actually kill or die to a PLAYER. Then
+run /leaderboard and /nemesis ledger. If a kill doesn't show, grab the raw line
+(findstr "CActor::Kill" in your Game.log) and send it — but the format's confirmed,
+so it should land.
