@@ -4,6 +4,7 @@ const path = require('node:path');
 let autoUpdater = null;
 try { ({ autoUpdater } = require('electron-updater')); } catch {}
 let tray = null, win = null, relay = null, mods = null;
+let isUpdating = false; // set during an update so window-all-closed doesn't block the quit
 
 async function load() {
   if (mods) return mods;
@@ -115,8 +116,22 @@ else {
     ipcMain.handle('saveLogBackupsPath', async (_e, p) => { const { config } = await load(); const cfg = config.loadConfig(); config.setLogBackupsPath(cfg, p); config.saveConfig(cfg); return { ok: true }; });
     ipcMain.handle('start', () => startRelay());
     ipcMain.handle('installUpdate', () => {
-      // close app, apply the downloaded update, relaunch into the new version
-      try { if (autoUpdater) { autoUpdater.quitAndInstall(false, true); } } catch (e) { status(`update install failed: ${e.message}`); }
+      if (!autoUpdater) return { ok: false, reason: 'no-updater' };
+      isUpdating = true;
+      status('installing update — closing app…');
+      // Release everything that could hold the executable open, or Windows can't
+      // swap the .exe and the installer sits on a "close the app / retry" prompt.
+      try { if (relay) { relay.stop(); relay = null; } } catch {}
+      try { if (tray) { tray.destroy(); tray = null; } } catch {}
+      try { for (const w of BrowserWindow.getAllWindows()) { w.removeAllListeners('close'); w.destroy(); } } catch {}
+      // quitAndInstall on the next tick, after teardown settles.
+      setImmediate(() => {
+        try { autoUpdater.quitAndInstall(false, true); } // isSilent=false, forceRunAfter=true
+        catch (e) { status(`update install failed: ${e.message}`); }
+        // Hard fallback: if the app is still alive shortly after, force-exit so the
+        // installer's file lock clears and it can finish. quitAndInstall relaunches us.
+        setTimeout(() => { try { app.exit(0); } catch {} }, 4000);
+      });
       return { ok: true };
     });
     ipcMain.handle('stop', () => { stopRelay(); return { ok: true }; });
@@ -168,5 +183,5 @@ else {
     }, 5000);
     const initial = process.argv.find((a) => a.startsWith('carbon12://')); if (initial) handlePairUrl(initial);
   });
-  app.on('window-all-closed', () => {});
+  app.on('window-all-closed', () => { if (isUpdating) { try { app.quit(); } catch {} } });
 }

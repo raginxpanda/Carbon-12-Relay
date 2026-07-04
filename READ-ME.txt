@@ -1,21 +1,36 @@
-RELAY 0.2.16 — "recent" / catalog now show genuinely newest first
-=================================================================
-Only electron/index.html changed. Pairs with BOT r264. Drag in -> Replace -> Yes.
+RELAY 0.2.17 — update button now actually closes the app (fix)
+==============================================================
+THE BUG you hit: clicked "Restart & Update", it said to close the app, you kept
+clicking Retry, and it wouldn't close.
 
-THE BUG: the "Recent" strip and the blueprint catalog weren't showing your newest
-blueprints first — new ones got buried.
+ROOT CAUSE: quitAndInstall was called while the app was still holding itself open:
+ • the relay's file tail + flush timer were still running,
+ • the tray icon was still alive,
+ • and the window had a close-interceptor (win.on('close') -> hide to tray) that
+   actively PREVENTED it from closing.
+So Windows couldn't swap the .exe, and the installer sat on the close/retry prompt.
 
-ROOT CAUSE: sorting was by earned_at date, but most blueprints have NO backfilled
-earned_at (only re-running catch-up fills real dates). Null dates collapsed to ""
-and fell back to ALPHABETICAL — so genuinely-new blueprints scattered into the
-alphabet instead of sitting at the top.
+THE FIX: installUpdate now fully tears down before quitAndInstall —
+ 1) stops the relay (releases the log file + timers),
+ 2) destroys the tray,
+ 3) strips the hide-to-tray close handler and destroys all windows,
+ 4) then calls quitAndInstall(isSilent=false, forceRunAfter=true),
+ 5) HARD FALLBACK: force-exits after 4s if anything's still alive, so the
+    installer's file lock always clears. (quitAndInstall relaunches the new version.)
+Also: window-all-closed now allows the quit while an update is in progress.
 
-FIX (both sides):
- • BOT r264 — "recent" now sorts by insertion order (the auto-increment id), which
-   is the true "most recently added" signal regardless of earned_at. Also sends id
-   on each catalog item.
- • RELAY (this) — the catalog modal sorts by id DESC too (then date, then name),
-   matching the bot. Newest additions always on top.
+CONSOLIDATED: this drop is the current complete electron/ set —
+ • main.cjs: pairing allowlist + live-count refresh + update button + THIS fix
+ • index.html: recent-ordering fix (0.2.16)
+ • preload.cjs: update bridges (0.2.15)
+Shipping this supersedes 0.2.13–0.2.16 for the electron/ files.
+(src/relay.mjs from 0.2.14 is still needed for the live-count fix if not yet shipped.)
 
-DEPLOY BOTH: bot r264 (no migration, just restart) + this index.html.
+FILES (drag electron/ in -> Replace all -> Yes)
 SHIP: npm version patch ; git push --follow-tags
+
+IMPORTANT: because the OLD (broken) installer is what's on members' machines now,
+the FIRST update to this version may still show the close/retry prompt (the fix
+isn't running yet — the old code is). From THIS version forward, updates close
+cleanly. If it hangs on this one update: close it from Task Manager, and the
+install completes.
