@@ -280,7 +280,7 @@
  window.relay.onStatus((l)=>{ line(l);
    if(/blueprint earned/i.test(l)) blip('bp');
    if(/kill|killed|destroyed|death/i.test(l)){ blip('kill'); const kf=$('killfeed'); if(kf){ if(kf.querySelector('.empty')) kf.innerHTML=''; const t=new Date().toLocaleTimeString(); kf.innerHTML='<div><span class="tm">'+t+'</span> '+l.replace(/</g,'&lt;')+'</div>'+kf.innerHTML; } } if(/running|started/.test(l)) setState(true); if(/stopped/.test(l)) setState(false); });
- window.relay.onRefresh(refresh);
+ window.relay.onRefresh(()=>{ refresh(); loadHaul(); });
 
 
  let CATALOG=[]; const ALLCATS=['All','Armor','Weapons','Attachments','Ship Components','Misc'];

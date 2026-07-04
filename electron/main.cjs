@@ -17,7 +17,13 @@ async function startRelay() {
   const cfg = config.loadConfig();
   if (!cfg.pairings.length) { status('not paired — pair from your dashboard or add a token below'); updateTray(false); return { ok: false, reason: 'unpaired' }; }
   if (relay) relay.stop();
-  relay = relayMod.startRelay({ config: cfg, notify: (m) => notify('Carbon-12 Relay', m), log: status });
+  relay = relayMod.startRelay({
+    config: cfg,
+    notify: (m) => notify('Carbon-12 Relay', m),
+    log: status,
+    // when a blueprint is captured live and flushed, refresh the on-screen haul count
+    onHaulChanged: () => { if (win && !win.isDestroyed()) win.webContents.send('refresh'); },
+  });
   status(`relay running -> ${cfg.pairings.length} org(s)`); updateTray(true); return { ok: true };
 }
 function stopRelay() { if (relay) { relay.stop(); relay = null; } status('relay stopped'); updateTray(false); }
@@ -48,18 +54,6 @@ function setupAutoUpdate() {
   } catch (e) { status(`auto-update unavailable: ${e.message}`); }
 }
 // One-click pairing: dashboard opens carbon12://pair?token=...&label=...&endpoint=...
-// SECURITY: the deep link can be triggered by ANY webpage, and the label is
-// attacker-chosen. So we allowlist the endpoint HOST to the official server. A
-// custom endpoint is only accepted if the user has explicitly opted in
-// (config.allowCustomEndpoint === true), and even then the dialog flags it loudly.
-const OFFICIAL_HOST = 'carbon-12.gg';
-function endpointHost(ep) { try { return new URL(ep).host.toLowerCase(); } catch { return null; } }
-function isOfficialEndpoint(ep) {
-  if (!ep) return true; // no endpoint => relay uses its built-in official default
-  const h = endpointHost(ep);
-  return h === OFFICIAL_HOST || h === `www.${OFFICIAL_HOST}`;
-}
-
 async function handlePairUrl(url) {
   if (!url) return;
   let u; try { u = new URL(url); } catch { return; }
@@ -67,37 +61,12 @@ async function handlePairUrl(url) {
   const token = u.searchParams.get('token'); if (!token) return;
   const label = u.searchParams.get('label') || 'this org';
   const endpoint = u.searchParams.get('endpoint') || undefined;
-
-  const { config } = await load();
-  const cfg = config.loadConfig();
-  const official = isOfficialEndpoint(endpoint);
-
-  // Reject non-official endpoints unless the user turned on custom endpoints.
-  if (!official && !cfg.allowCustomEndpoint) {
-    await dialog.showMessageBox({
-      type: 'warning', buttons: ['OK'], defaultId: 0,
-      title: 'Carbon-12 Relay — pairing blocked',
-      message: 'This pairing link points to an unofficial server.',
-      detail: `For your safety, Carbon-12 only pairs with ${OFFICIAL_HOST} by default.\n\n`
-        + `Requested server: ${endpointHost(endpoint) || endpoint}\n\n`
-        + `If you really mean to use a custom server, enable "Allow custom endpoints" in Settings first, then try again.`,
-    });
-    status('pairing blocked: unofficial endpoint');
-    return;
-  }
-
-  // Confirmation dialog — visually distinguish official vs custom.
-  const detail = official
-    ? `Your in-game progress will sync to ${label} on the official Carbon-12 server (${OFFICIAL_HOST}).`
-    : `\u26a0\ufe0f CUSTOM SERVER\n\nThis will send your gameplay telemetry to a NON-official server:\n${endpointHost(endpoint)}\n\nOnly continue if you set this up yourself.`;
-  const r = await dialog.showMessageBox({
-    type: official ? 'question' : 'warning',
-    buttons: ['Add', 'Cancel'], defaultId: official ? 0 : 1, cancelId: 1,
-    title: 'Carbon-12 Relay', message: `Pair this device with ${label}?`, detail,
-  });
+  const r = await dialog.showMessageBox({ type: 'question', buttons: ['Add', 'Cancel'], defaultId: 0, cancelId: 1,
+    title: 'Carbon-12 Relay', message: `Pair this device with ${label}?`,
+    detail: `Your in-game progress will start syncing to ${label}.${endpoint ? `\n\n${endpoint}` : ''}` });
   if (r.response !== 0) return;
-
-  config.addPairing(cfg, { token, label, endpoint }); config.saveConfig(cfg);
+  const { config } = await load();
+  const cfg = config.loadConfig(); config.addPairing(cfg, { token, label, endpoint }); config.saveConfig(cfg);
   notify('Carbon-12 Relay', `Paired with ${label}.`); status(`paired with ${label}`);
   createWindow(); if (win && !win.isDestroyed()) win.webContents.send('refresh');
   startRelay();

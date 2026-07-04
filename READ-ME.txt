@@ -1,19 +1,31 @@
-RELAY 0.2.13 — pairing endpoint allowlist (security, from Fable's review)
-=========================================================================
-Only electron/main.cjs changed. Drag into your project -> Replace -> Yes.
+RELAY 0.2.14 — live blueprint count now updates (bug fix)
+=========================================================
+THE BUG you hit: earn a blueprint in-game, relay's total stays at 58 — only
+ticks to 59 after you hit Catch up.
 
-FIX — the only real remote-facing hole in the relay
- The carbon12://pair deep link can be triggered by ANY webpage, with an
- attacker-chosen label and endpoint. Before, it would happily pair you to an
- attacker's server (streaming your telemetry there / crediting your data to
- their org). Now:
-  • Endpoint host is ALLOWLISTED to carbon-12.gg (and www.). Anything else is
-    BLOCKED with a warning, unless you explicitly enable custom endpoints.
-  • The confirm dialog visually distinguishes "official server" (normal) from
-    "CUSTOM SERVER" (loud warning, defaults to Cancel).
-  • Blocks lookalike domains (carbon-12.gg.evil.com etc.) — verified.
+ROOT CAUSE (two parts, both fixed):
+ 1) The on-screen haul count only reloaded on start / catch-up / Ctrl+R — nothing
+    refreshed it when a blueprint came in live. (Catch up worked because it calls
+    the reload; a live earn didn't.)
+ 2) Even the internal "refresh" signal only reloaded pairings/config, NOT the
+    blueprint count. So the number sat stale until a full reload.
 
- To allow a custom endpoint (self-hosters): set allowCustomEndpoint:true in your
- relay config. Default is off, which is right for everyone using the official server.
+THE FIX (end-to-end):
+ • src/relay.mjs — after a blueprint is captured live AND flushed to the bot, it
+   now fires an onHaulChanged signal (fires post-send, so the re-fetch sees the
+   new total, not the old one).
+ • electron/main.cjs — wires that signal to tell the window to refresh. (Also
+   contains the 0.2.13 pairing-endpoint allowlist, so this supersedes that drop.)
+ • electron/index.html — the refresh handler now reloads the HAUL COUNT too, not
+   just the org list.
 
+RESULT: earn a blueprint -> within ~5s (next flush) the relay's count updates on
+its own. No more manual Catch up to see the right number.
+
+NOTE: this fixes the DISPLAY. If your bot count (/blueprint mine in Discord) was
+ALSO stuck at 58 before catch-up (not just the relay screen), tell me — that
+would be a separate live-send issue and I'd chase the tail path. Most likely it
+was just the stale on-screen number, which this fixes.
+
+FILES (drag src + electron in -> Replace all -> Yes)
 SHIP: npm version patch ; git push --follow-tags
