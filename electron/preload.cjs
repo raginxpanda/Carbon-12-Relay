@@ -14,6 +14,8 @@ contextBridge.exposeInMainWorld('relay', {
   haul: () => ipcRenderer.invoke('haul'),
   onStatus: (cb) => ipcRenderer.on('status', (_e, line) => cb(line)),
   onRefresh: (cb) => ipcRenderer.on('refresh', () => cb()),
+  onUpdateReady: (cb) => ipcRenderer.on('update-ready', (_e, info) => cb(info)),
+  installUpdate: () => ipcRenderer.invoke('installUpdate'),
   onShortcut: (cb) => ipcRenderer.on('shortcut', (_e, a) => cb(a)),
   getLoginItem: () => ipcRenderer.invoke('getLoginItem'),
   setLoginItem: (on) => ipcRenderer.invoke('setLoginItem', on),

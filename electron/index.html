@@ -147,8 +147,29 @@
  .empty-guided{text-align:center;padding:18px 8px;color:var(--text-dim)}
  .empty-guided .ico{font-size:22px;opacity:.5;margin-bottom:6px}
 
+
+ /* update-ready banner */
+ .upd-banner{position:sticky;top:0;z-index:300;display:none;align-items:center;gap:12px;padding:11px 16px;background:linear-gradient(90deg,rgba(56,224,200,.16),rgba(56,224,200,.06));border-bottom:1px solid var(--cyan);animation:updslide .3s ease}
+ .upd-banner.show{display:flex}
+ @keyframes updslide{from{transform:translateY(-100%);opacity:0}to{transform:translateY(0);opacity:1}}
+ .upd-banner .dot{width:8px;height:8px;border-radius:50%;background:var(--cyan);box-shadow:0 0 8px var(--cyan);animation:blink 1.6s ease-in-out infinite;flex:none}
+ .upd-banner .txt{flex:1;font-family:'Rajdhani',sans-serif;font-size:14px;letter-spacing:.02em;color:#eafff9}
+ .upd-banner .txt b{color:var(--cyan)}
+ .upd-banner button{font-family:'Rajdhani',sans-serif;text-transform:uppercase;letter-spacing:.1em;font-size:12px;font-weight:600;padding:7px 14px;border-radius:7px;cursor:pointer;border:1px solid transparent}
+ .upd-banner .go{background:var(--cyan);color:#04120e;border-color:var(--cyan)}
+ .upd-banner .go:hover{filter:brightness(1.1)}
+ .upd-banner .go:active{transform:translateY(1px)}
+ .upd-banner .later{background:transparent;color:var(--text-dim);border-color:var(--line)}
+ .upd-banner .later:hover{color:var(--white);border-color:var(--blue)}
+
 </style></head>
 <body>
+<div class="upd-banner" id="upd-banner">
+  <span class="dot"></span>
+  <span class="txt">Update <b id="upd-ver">ready</b> downloaded. Restart to apply.</span>
+  <button class="go" id="upd-go">Restart &amp; Update</button>
+  <button class="later" id="upd-later">Later</button>
+</div>
 <div class="app">
 
  <section class="telemetry" id="telemetry">
@@ -384,6 +405,16 @@
  refresh();
  loadHaul();
  updateOnboarding();
+
+ // auto-update: show banner when a new version is downloaded
+ if (window.relay.onUpdateReady) window.relay.onUpdateReady((info)=>{
+   const b=$('upd-banner'); if(!b) return;
+   if(info && info.version && $('upd-ver')) $('upd-ver').textContent='v'+info.version;
+   b.classList.add('show');
+ });
+ if($('upd-go')) $('upd-go').onclick=async()=>{ $('upd-go').textContent='Restarting…'; $('upd-go').disabled=true; try{ await window.relay.installUpdate(); }catch(e){ line('update failed'); } };
+ if($('upd-later')) $('upd-later').onclick=()=>{ $('upd-banner').classList.remove('show'); line('update deferred — it\'ll apply next time you fully close the app'); };
+
 </script>
 <div class="cat-scrim" id="cat-scrim">
  <div class="cat-modal">

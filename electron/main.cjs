@@ -21,7 +21,6 @@ async function startRelay() {
     config: cfg,
     notify: (m) => notify('Carbon-12 Relay', m),
     log: status,
-    // when a blueprint is captured live and flushed, refresh the on-screen haul count
     onHaulChanged: () => { if (win && !win.isDestroyed()) win.webContents.send('refresh'); },
   });
   status(`relay running -> ${cfg.pairings.length} org(s)`); updateTray(true); return { ok: true };
@@ -47,13 +46,27 @@ function setupAutoUpdate() {
   try {
     autoUpdater.autoDownload = true;
     autoUpdater.on('update-available', (i) => status(`update available: v${i.version} — downloading in background`));
-    autoUpdater.on('update-downloaded', (i) => { status(`update v${i.version} ready — restart to apply`); notify('Carbon-12 Relay', `Update v${i.version} ready. Restart to apply.`); });
+    autoUpdater.on('update-downloaded', (i) => {
+      status(`update v${i.version} ready`);
+      notify('Carbon-12 Relay', `Update v${i.version} ready. Click "Restart & Update" in the app.`);
+      // tell the window to show the in-app "Restart & Update" banner
+      if (win && !win.isDestroyed()) win.webContents.send('update-ready', { version: i.version });
+    });
     autoUpdater.on('error', (e) => status(`update check failed: ${e && e.message}`));
     autoUpdater.checkForUpdatesAndNotify().catch(() => {});
     setInterval(() => autoUpdater.checkForUpdatesAndNotify().catch(() => {}), 6 * 60 * 60 * 1000);
   } catch (e) { status(`auto-update unavailable: ${e.message}`); }
 }
 // One-click pairing: dashboard opens carbon12://pair?token=...&label=...&endpoint=...
+// SECURITY: this deep link can be triggered by ANY webpage with an attacker-chosen
+// label + endpoint, so we allowlist the endpoint host to the official server.
+const OFFICIAL_HOST = 'carbon-12.gg';
+function endpointHost(ep) { try { return new URL(ep).host.toLowerCase(); } catch { return null; } }
+function isOfficialEndpoint(ep) {
+  if (!ep) return true;
+  const h = endpointHost(ep);
+  return h === OFFICIAL_HOST || h === `www.${OFFICIAL_HOST}`;
+}
 async function handlePairUrl(url) {
   if (!url) return;
   let u; try { u = new URL(url); } catch { return; }
@@ -61,12 +74,24 @@ async function handlePairUrl(url) {
   const token = u.searchParams.get('token'); if (!token) return;
   const label = u.searchParams.get('label') || 'this org';
   const endpoint = u.searchParams.get('endpoint') || undefined;
-  const r = await dialog.showMessageBox({ type: 'question', buttons: ['Add', 'Cancel'], defaultId: 0, cancelId: 1,
-    title: 'Carbon-12 Relay', message: `Pair this device with ${label}?`,
-    detail: `Your in-game progress will start syncing to ${label}.${endpoint ? `\n\n${endpoint}` : ''}` });
-  if (r.response !== 0) return;
   const { config } = await load();
-  const cfg = config.loadConfig(); config.addPairing(cfg, { token, label, endpoint }); config.saveConfig(cfg);
+  const cfg = config.loadConfig();
+  const official = isOfficialEndpoint(endpoint);
+  if (!official && !cfg.allowCustomEndpoint) {
+    await dialog.showMessageBox({ type: 'warning', buttons: ['OK'], defaultId: 0,
+      title: 'Carbon-12 Relay — pairing blocked',
+      message: 'This pairing link points to an unofficial server.',
+      detail: `For your safety, Carbon-12 only pairs with ${OFFICIAL_HOST} by default.\n\nRequested server: ${endpointHost(endpoint) || endpoint}\n\nIf you really mean to use a custom server, enable "Allow custom endpoints" in Settings first, then try again.` });
+    status('pairing blocked: unofficial endpoint');
+    return;
+  }
+  const detail = official
+    ? `Your in-game progress will sync to ${label} on the official Carbon-12 server (${OFFICIAL_HOST}).`
+    : `\u26a0\ufe0f CUSTOM SERVER\n\nThis sends your telemetry to a NON-official server:\n${endpointHost(endpoint)}\n\nOnly continue if you set this up yourself.`;
+  const r = await dialog.showMessageBox({ type: official ? 'question' : 'warning', buttons: ['Add', 'Cancel'], defaultId: official ? 0 : 1, cancelId: 1,
+    title: 'Carbon-12 Relay', message: `Pair this device with ${label}?`, detail });
+  if (r.response !== 0) return;
+  config.addPairing(cfg, { token, label, endpoint }); config.saveConfig(cfg);
   notify('Carbon-12 Relay', `Paired with ${label}.`); status(`paired with ${label}`);
   createWindow(); if (win && !win.isDestroyed()) win.webContents.send('refresh');
   startRelay();
@@ -89,6 +114,11 @@ else {
     ipcMain.handle('saveLogPath', async (_e, p) => { const { config } = await load(); const cfg = config.loadConfig(); cfg.logPath = p; config.saveConfig(cfg); return { ok: true }; });
     ipcMain.handle('saveLogBackupsPath', async (_e, p) => { const { config } = await load(); const cfg = config.loadConfig(); config.setLogBackupsPath(cfg, p); config.saveConfig(cfg); return { ok: true }; });
     ipcMain.handle('start', () => startRelay());
+    ipcMain.handle('installUpdate', () => {
+      // close app, apply the downloaded update, relaunch into the new version
+      try { if (autoUpdater) { autoUpdater.quitAndInstall(false, true); } } catch (e) { status(`update install failed: ${e.message}`); }
+      return { ok: true };
+    });
     ipcMain.handle('stop', () => { stopRelay(); return { ok: true }; });
     ipcMain.handle('digest', async () => { const { store, digest } = await load(); return digest.formatDigest(store.mostRecentSession()) || 'No recorded haul yet.'; });
   ipcMain.handle('haul', async () => {

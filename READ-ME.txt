@@ -1,31 +1,33 @@
-RELAY 0.2.14 — live blueprint count now updates (bug fix)
-=========================================================
-THE BUG you hit: earn a blueprint in-game, relay's total stays at 58 — only
-ticks to 59 after you hit Catch up.
+RELAY 0.2.15 — "Restart & Update" button
+========================================
+Adds the click-to-update UX you asked for, and folds in the two prior fixes so
+this is the single current drop.
 
-ROOT CAUSE (two parts, both fixed):
- 1) The on-screen haul count only reloaded on start / catch-up / Ctrl+R — nothing
-    refreshed it when a blueprint came in live. (Catch up worked because it calls
-    the reload; a live earn didn't.)
- 2) Even the internal "refresh" signal only reloaded pairings/config, NOT the
-    blueprint count. So the number sat stale until a full reload.
+WHAT'S NEW
+ • When an update finishes downloading in the background, a cyan banner slides in
+   at the top: "Update vX.Y.Z downloaded. Restart to apply." with two buttons:
+     - "Restart & Update" -> closes the app, applies the update, reopens the NEW
+       version automatically (autoUpdater.quitAndInstall).
+     - "Later" -> dismisses; the update still applies next time you fully quit.
+ • A desktop notification also fires when the update is ready.
 
-THE FIX (end-to-end):
- • src/relay.mjs — after a blueprint is captured live AND flushed to the bot, it
-   now fires an onHaulChanged signal (fires post-send, so the re-fetch sees the
-   new total, not the old one).
- • electron/main.cjs — wires that signal to tell the window to refresh. (Also
-   contains the 0.2.13 pairing-endpoint allowlist, so this supersedes that drop.)
- • electron/index.html — the refresh handler now reloads the HAUL COUNT too, not
-   just the org list.
+INCLUDED FROM PRIOR DROPS (so you only need this one)
+ • 0.2.13 pairing-endpoint allowlist (security) — was missing from the 0.2.14
+   main.cjs; it's correctly included here.
+ • 0.2.14 live blueprint-count refresh (the 58->59 fix) — main.cjs onHaulChanged +
+   index.html refresh handler.
+   NOTE: 0.2.14 also shipped src/relay.mjs. THIS drop does NOT re-include relay.mjs
+   (no change to it here), so if you haven't shipped 0.2.14's relay.mjs yet, take it
+   from that drop too. The count fix needs BOTH relay.mjs (fires the signal) and this
+   index.html (acts on it).
 
-RESULT: earn a blueprint -> within ~5s (next flush) the relay's count updates on
-its own. No more manual Catch up to see the right number.
+FILES (drag electron/ in -> Replace all -> Yes)
+  electron/main.cjs  electron/preload.cjs  electron/index.html
+  (+ src/relay.mjs from the 0.2.14 drop if not already shipped)
 
-NOTE: this fixes the DISPLAY. If your bot count (/blueprint mine in Discord) was
-ALSO stuck at 58 before catch-up (not just the relay screen), tell me — that
-would be a separate live-send issue and I'd chase the tail path. Most likely it
-was just the stale on-screen number, which this fixes.
+HOW IT WORKS
+ electron-updater already downloads updates in the background (unchanged). This
+ just surfaces the "ready" state as an in-app button and calls quitAndInstall on
+ click. Auto-update itself needs your GitHub release published as before.
 
-FILES (drag src + electron in -> Replace all -> Yes)
 SHIP: npm version patch ; git push --follow-tags
