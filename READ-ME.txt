@@ -1,33 +1,30 @@
-RELAY 0.2.18 — COMBAT PARSER (the big one: kill feed / leaderboard / Nemesis go live)
-=====================================================================================
-Pairs with BOT r266. This is the piece that was blocked for weeks — now unblocked,
-because a real kill-line format got confirmed (cross-checked against an independent
-working kill-feed tool, citizenmon).
+RELAY 0.2.21 — five quality-of-life additions
+=============================================
+Drag electron/ in -> Replace all -> Yes. Consolidated electron set (includes all
+prior electron fixes: allowlist, update button + auto-popup + close-fix, live
+count, recent-ordering, collapsible modules).
 
-WHAT'S NEW
- • NEW FILE src/combat-parser.mjs — parses SC kill lines:
-     <Actor Death> CActor::Kill: 'victim' ... killed by 'killer' ... using 'weapon'
-       ... with damage type 'type'
-   plus vehicle destruction (CVehicle::OnAdvanceDestroyLevel). Emits a NEUTRAL
-   actor_death event (killer + victim). It does NOT decide who "won" — the BOT does
-   that by comparing against your paired handle (correct, since only the bot knows
-   which handle owns this device). Tags obvious NPCs so they don't inflate PvP.
- • src/relay.mjs — runs the combat parser alongside the location parser.
+1) COLLAPSE-STATE MEMORY
+   Every module section (Paired orgs, Catch up, Connection, Kill feed, Activity,
+   Settings) now remembers whether you left it open or closed, across restarts.
+   Set it up how you like once; it stays that way.
 
-WHAT LIGHTS UP (all at once, bot r266)
- • /leaderboard — real kills/deaths/KD
- • /nemesis ledger + dossier — who keeps killing your org
- • Session Wrapped — the K/D tiles fill in
- • (dashboard combat panel + quarters strip if you've wired those views)
+2) "COPIED!" CONFIRMATION
+   The Copy button in Activity now flashes "Copied!" in cyan for a moment so you
+   know the log actually copied.
 
-PROVEN END-TO-END (parser → relay event → bot ingest → stored):
- ✓ your kill counted   ✓ your death counted   ✓ NPC kill NOT counted as PvP
- ✓ suicide filtered out of K/D   ✓ witnessed kills stored but not miscredited to you
+3) LIVE SESSION SUMMARY
+   A line under the status bar shows "N blueprints · N kills · N deaths · this
+   session", updating live as events come in. Resets when you start a fresh session.
+   (Kills/deaths fill in once combat data flows — pairs with the combat parser.)
 
-DEPLOY: bot r266 (no new migration — kills table already exists) → deploy → restart.
-Relay: drag src/ in → npm version patch → git push --follow-tags.
+4) KILL-FEED COUNT BADGE
+   The Kill feed header shows a small orange badge with the session kill count, so
+   even when that section is collapsed you can see combat happened. Hidden at 0.
 
-FIRST REAL TEST: play a session where you actually kill or die to a PLAYER. Then
-run /leaderboard and /nemesis ledger. If a kill doesn't show, grab the raw line
-(findstr "CActor::Kill" in your Game.log) and send it — but the format's confirmed,
-so it should land.
+5) MINIMIZE-TO-TRAY TOGGLE (Settings)
+   New checkbox: "Keep running in the tray when I close the window." On by default
+   (current behavior). Uncheck it and closing the window quits the app instead.
+
+All prefs are stored in your relay config (with getUI/setUI), so they persist.
+NO bot change. SHIP: npm version patch ; git push --follow-tags

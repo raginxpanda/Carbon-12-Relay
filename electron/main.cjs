@@ -2,6 +2,7 @@
 const { app, Tray, Menu, BrowserWindow, Notification, ipcMain, nativeImage, dialog } = require('electron');
 const path = require('node:path');
 let autoUpdater = null;
+let pendingUpdateVersion = null; // set when an update is downloaded, so a (re)opened window can show the banner
 try { ({ autoUpdater } = require('electron-updater')); } catch {}
 let tray = null, win = null, relay = null, mods = null;
 let isUpdating = false; // set during an update so window-all-closed doesn't block the quit
@@ -32,7 +33,15 @@ function createWindow() {
   win = new BrowserWindow({ width: 560, height: 680, title: 'Carbon-12 Relay', icon: path.join(__dirname, 'icon.png'),
     webPreferences: { preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true, nodeIntegration: false } });
   win.loadFile(path.join(__dirname, 'index.html'));
-  win.on('close', (e) => { e.preventDefault(); win.hide(); });
+  // if an update was already downloaded (e.g. while closed to tray), show the button now
+  win.webContents.on('did-finish-load', () => { if (pendingUpdateVersion && !win.isDestroyed()) win.webContents.send('update-ready', { version: pendingUpdateVersion }); });
+  win.on('close', (e) => {
+    if (isUpdating) return;            // during update, let it close (teardown handles it)
+    let hide = true;
+    try { const c = mods && mods.config ? mods.config.loadConfig() : null; if (c && c.ui && c.ui.minimizeToTray === false) hide = false; } catch {}
+    if (hide) { e.preventDefault(); win.hide(); }
+    else { app.quit(); }               // user chose: close = quit
+  });
 }
 function updateTray(running) {
   if (!tray) return;
@@ -42,20 +51,35 @@ function updateTray(running) {
     { type: 'separator' }, { label: 'Quit', click: () => { stopRelay(); app.exit(0); } },
   ]));
 }
+function showUpdateBanner() {
+  if (!pendingUpdateVersion) return;
+  if (win && !win.isDestroyed()) {
+    win.webContents.send('update-ready', { version: pendingUpdateVersion });
+    try { win.show(); win.focus(); } catch {}   // surface the window so the button is seen
+  }
+}
+
 function setupAutoUpdate() {
   if (!autoUpdater) return;
   try {
     autoUpdater.autoDownload = true;
-    autoUpdater.on('update-available', (i) => status(`update available: v${i.version} — downloading in background`));
+    autoUpdater.on('update-available', (i) => {
+      status(`update available: v${i.version} — downloading…`);
+      // let the UI show a subtle "downloading" hint so the user knows the button is coming
+      if (win && !win.isDestroyed()) win.webContents.send('update-downloading', { version: i.version });
+    });
     autoUpdater.on('update-downloaded', (i) => {
+      pendingUpdateVersion = i.version;                 // remember, in case the window opens later
       status(`update v${i.version} ready`);
       notify('Carbon-12 Relay', `Update v${i.version} ready. Click "Restart & Update" in the app.`);
-      // tell the window to show the in-app "Restart & Update" banner
-      if (win && !win.isDestroyed()) win.webContents.send('update-ready', { version: i.version });
+      showUpdateBanner();                                // pop the button now, while running
     });
     autoUpdater.on('error', (e) => status(`update check failed: ${e && e.message}`));
-    autoUpdater.checkForUpdatesAndNotify().catch(() => {});
-    setInterval(() => autoUpdater.checkForUpdatesAndNotify().catch(() => {}), 6 * 60 * 60 * 1000);
+    const check = () => autoUpdater.checkForUpdatesAndNotify().catch(() => {});
+    check();                                             // on launch
+    setInterval(check, 30 * 60 * 1000);                  // every 30 min while running
+    // also re-check when the user focuses the window (cheap, catches a release mid-session)
+    app.on('browser-window-focus', () => check());
   } catch (e) { status(`auto-update unavailable: ${e.message}`); }
 }
 // One-click pairing: dashboard opens carbon12://pair?token=...&label=...&endpoint=...
@@ -114,6 +138,8 @@ else {
     ipcMain.handle('removePairing', async (_e, i) => { const { config } = await load(); const cfg = config.loadConfig(); config.removePairing(cfg, i); config.saveConfig(cfg); return { ok: true }; });
     ipcMain.handle('saveLogPath', async (_e, p) => { const { config } = await load(); const cfg = config.loadConfig(); cfg.logPath = p; config.saveConfig(cfg); return { ok: true }; });
     ipcMain.handle('saveLogBackupsPath', async (_e, p) => { const { config } = await load(); const cfg = config.loadConfig(); config.setLogBackupsPath(cfg, p); config.saveConfig(cfg); return { ok: true }; });
+    ipcMain.handle('getUI', async () => { const { config } = await load(); const c = config.loadConfig(); return c.ui || {}; });
+    ipcMain.handle('setUI', async (_e, ui) => { const { config } = await load(); const cfg = config.loadConfig(); cfg.ui = Object.assign({}, cfg.ui, ui||{}); config.saveConfig(cfg); return { ok: true }; });
     ipcMain.handle('start', () => startRelay());
     ipcMain.handle('installUpdate', () => {
       if (!autoUpdater) return { ok: false, reason: 'no-updater' };

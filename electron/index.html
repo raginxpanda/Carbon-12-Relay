@@ -162,6 +162,13 @@
  .upd-banner .later{background:transparent;color:var(--text-dim);border-color:var(--line)}
  .upd-banner .later:hover{color:var(--white);border-color:var(--blue)}
 
+
+ .kf-badge{font-family:'JetBrains Mono';font-size:11px;font-weight:700;color:var(--orange);background:rgba(232,101,43,.14);border:1px solid rgba(232,101,43,.4);border-radius:10px;padding:1px 8px;min-width:18px;text-align:center}
+ .sess-row{display:flex;align-items:center;gap:9px;padding:8px 16px 11px;border-top:1px solid var(--line);font-family:'Rajdhani',sans-serif;font-size:13px;color:var(--text-dim)}
+ .sess-row .sess-item b{color:var(--white);font-size:15px;font-weight:700;margin-right:3px}
+ .sess-row .sess-dot{color:var(--line-bright)}
+ .sess-row .sess-tag{margin-left:auto;text-transform:uppercase;letter-spacing:.14em;font-size:9px;color:var(--text-dim);opacity:.7}
+ .telemetry.live .sess-row .sess-item b{color:var(--cyan)}
 </style></head>
 <body>
 <div class="upd-banner" id="upd-banner">
@@ -182,6 +189,14 @@
    <span class="pulse" id="dot"></span>
    <span class="link-label" id="state">stopped</span>
    <span class="link-meta" id="linkmeta"></span>
+  </div>
+  <div class="sess-row" id="sess-row">
+   <span class="sess-item"><b id="sess-bp">0</b> blueprints</span>
+   <span class="sess-dot">·</span>
+   <span class="sess-item"><b id="sess-k">0</b> kills</span>
+   <span class="sess-dot">·</span>
+   <span class="sess-item"><b id="sess-d">0</b> deaths</span>
+   <span class="sess-tag">this session</span>
   </div>
  </section>
 
@@ -219,7 +234,7 @@
   </div>
  </details>
 
- <div class="mod"><h3><span class="idx">02</span> Catch up</h3>
+ <details class="mod"><summary><span class="idx">02</span> Catch up <span class="chev">&#9656;</span></summary>
   <div class="mod-body">
    <p class="hint" style="margin:0 0 10px">Pull blueprints from your past sessions (logbackups) and current log into your org(s).</p>
    <button class="btn wide" id="catchup">Catch up on past sessions</button>
@@ -228,13 +243,13 @@
     <button class="btn" id="save-backups">Save logbackups folder</button></details>
    <div id="catchup-result" class="hint" style="margin-top:10px"></div>
   </div>
- </div>
+ </details>
 
- <div class="mod"><h3><span class="idx">03</span> Connection</h3><div class="mod-body"><div id="health"><span class="hint">not started</span></div></div></div>
+ <details class="mod" open><summary><span class="idx">03</span> Connection <span class="chev">&#9656;</span></summary><div class="mod-body"><div id="health"><span class="hint">not started</span></div></div></details>
 
- <div class="mod"><h3><span class="idx">04</span> Kill feed <span style="margin-left:auto;font-family:'JetBrains Mono';font-size:10px;color:var(--text-dim)">combat</span></h3><div class="mod-body" style="padding:12px"><div class="kf" id="killfeed"><span class="empty">No combat captured yet — kills appear here live once you're flying.</span></div></div></div>
+ <details class="mod" open><summary><span class="idx">04</span> Kill feed <span id="kf-badge" class="kf-badge" style="margin-left:auto;display:none">0</span><span style="margin-left:8px;font-family:'JetBrains Mono';font-size:10px;color:var(--text-dim)">combat</span><span class="chev" style="margin-left:10px">&#9656;</span></summary><div class="mod-body" style="padding:12px"><div class="kf" id="killfeed"><span class="empty">No combat captured yet — kills appear here live once you're flying.</span></div></div></details>
 
- <div class="mod"><h3><span class="idx">05</span> Activity <button id="copylog" style="margin-left:auto;font-family:'Rajdhani';text-transform:uppercase;letter-spacing:.1em;font-size:10px;padding:3px 9px;border:1px solid var(--line);border-radius:5px;background:var(--panel-2);color:var(--text-dim);cursor:pointer">Copy</button></h3><div class="mod-body" style="padding:12px"><div class="log" id="log"></div></div></div>
+ <details class="mod"><summary><span class="idx">05</span> Activity <button id="copylog" style="margin-left:auto;font-family:'Rajdhani';text-transform:uppercase;letter-spacing:.1em;font-size:10px;padding:3px 9px;border:1px solid var(--line);border-radius:5px;background:var(--panel-2);color:var(--text-dim);cursor:pointer">Copy</button><span class="chev" style="margin-left:10px">&#9656;</span></summary><div class="mod-body" style="padding:12px"><div class="log" id="log"></div></div></details>
 
  <details class="mod"><summary><span class="idx">06</span> Settings <span class="chev">&#9656;</span></summary>
   <div class="mod-body">
@@ -243,6 +258,7 @@
    <button class="btn" id="save-log">Save path</button>
    <div class="chk" style="margin-top:14px"><input type="checkbox" id="launch"><span>Launch at login (starts hidden in the tray)</span></div>
    <div class="chk" style="margin-top:10px"><input type="checkbox" id="sound"><span>Play a sound when a blueprint or kill is captured</span></div>
+   <div class="chk" style="margin-top:10px"><input type="checkbox" id="mintray" checked><span>Keep running in the tray when I close the window</span></div>
   </div>
  </details>
 
@@ -298,9 +314,17 @@
    line('catch-up: '+$('catchup-result').textContent); loadHaul(); };
  $('launch').onchange=async()=>{ await window.relay.setLoginItem($('launch').checked); line('launch at login: '+($('launch').checked?'on':'off')); };
  if($('sound')) $('sound').onchange=async()=>{ SOUND_ON=$('sound').checked; await window.relay.setSound(SOUND_ON); if(SOUND_ON) blip('bp'); line('capture sound: '+(SOUND_ON?'on':'off')); };
+ let sess={bp:0,k:0,d:0};
+ function renderSess(){ if($('sess-bp'))$('sess-bp').textContent=sess.bp; if($('sess-k'))$('sess-k').textContent=sess.k; if($('sess-d'))$('sess-d').textContent=sess.d;
+   var b=$('kf-badge'); if(b){ if(sess.k>0){ b.style.display=''; b.textContent=sess.k; } else b.style.display='none'; } }
+ function resetSess(){ sess={bp:0,k:0,d:0}; renderSess(); }
  window.relay.onStatus((l)=>{ line(l);
-   if(/blueprint earned/i.test(l)) blip('bp');
-   if(/kill|killed|destroyed|death/i.test(l)){ blip('kill'); const kf=$('killfeed'); if(kf){ if(kf.querySelector('.empty')) kf.innerHTML=''; const t=new Date().toLocaleTimeString(); kf.innerHTML='<div><span class="tm">'+t+'</span> '+l.replace(/</g,'&lt;')+'</div>'+kf.innerHTML; } } if(/running|started/.test(l)) setState(true); if(/stopped/.test(l)) setState(false); });
+   if(/blueprint earned/i.test(l)){ blip('bp'); sess.bp++; renderSess(); }
+   if(/^died:|\bdeath\b/i.test(l)){ sess.d++; renderSess(); }
+   if(/kill|killed|destroyed|death/i.test(l)){ blip('kill'); const kf=$('killfeed'); if(kf){ if(kf.querySelector('.empty')) kf.innerHTML=''; const t=new Date().toLocaleTimeString(); kf.innerHTML='<div><span class="tm">'+t+'</span> '+l.replace(/</g,'&lt;')+'</div>'+kf.innerHTML; }
+     // count a kill only when it's an outbound kill line, not a death/witnessed
+     if(/combat:/i.test(l) && !/^died:/i.test(l)) { sess.k++; renderSess(); } }
+   if(/running|started/.test(l)) setState(true); if(/stopped/.test(l)){ setState(false); } });
  window.relay.onRefresh(()=>{ refresh(); loadHaul(); });
 
 
@@ -384,6 +408,23 @@
    const p=arr[0]; if(meta&&p){ const ago=p.agoMs==null?'no sync yet':'synced '+relAgo(p.agoMs)+' ago'; meta.textContent=(p.handle?p.handle+' · ':'')+ago+' · '+p.pending+' queued'; }
  });
  (async()=>{ try{ const l=await window.relay.getLoginItem(); $('launch').checked=!!l.openAtLogin; }catch{} })();
+
+ // ---- UI prefs: collapse-state memory (item 1) + minimize-to-tray (item 5) ----
+ (async()=>{
+   let ui={}; try{ ui=await window.relay.getUI()||{}; }catch{}
+   // restore collapse state per module (by its idx number)
+   const mods=document.querySelectorAll('details.mod');
+   const open=ui.open||{};
+   mods.forEach(function(d){
+     const idxEl=d.querySelector('.idx'); const key=idxEl?idxEl.textContent.trim():null; if(!key) return;
+     if(Object.prototype.hasOwnProperty.call(open,key)) d.open=!!open[key];
+     d.addEventListener('toggle',function(){
+       open[key]=d.open; try{ window.relay.setUI({open:open}); }catch{}
+     });
+   });
+   // minimize-to-tray toggle
+   const mt=$('mintray'); if(mt){ mt.checked = ui.minimizeToTray!==false; mt.onchange=function(){ try{ window.relay.setUI({minimizeToTray:mt.checked}); }catch{} line(mt.checked?'— closing will keep running in the tray —':'— closing will now quit the app —'); }; }
+ })();
  (async()=>{ try{ const v=await window.relay.getVersion(); $('ver').textContent='v'+v; }catch{} })();
  if($('open-catalog')) $('open-catalog').onclick=openCatalog;
  // catalog close via delegation (modal markup loads after this script runs)
@@ -394,8 +435,10 @@
  });
  document.addEventListener('keydown',function(e){ if(e.key==='Escape'){ var sc=$('cat-scrim'); if(sc) sc.classList.remove('on'); } });
 
- function copyLog(){ try{ navigator.clipboard.writeText(logEl.textContent||''); line('— activity log copied —'); }catch{ line('copy failed'); } }
- if($('copylog')) $('copylog').onclick=copyLog;
+ function copyLog(){ try{ navigator.clipboard.writeText(logEl.textContent||''); line('— activity log copied —');
+   var b=$('copylog'); if(b){ var o=b.textContent; b.textContent='Copied!'; b.style.color='var(--cyan)'; b.style.borderColor='var(--cyan)'; setTimeout(function(){ b.textContent=o; b.style.color=''; b.style.borderColor=''; },1400); }
+ }catch{ line('copy failed'); } }
+ if($('copylog')) $('copylog').onclick=function(e){ e.preventDefault(); e.stopPropagation(); copyLog(); };
  if(window.relay.onShortcut) window.relay.onShortcut((a)=>{
    if(a==='refresh'){ loadHaul(); line('— haul refreshed —'); }
    else if(a==='catchup'){ const b=$('catchup'); if(b&&!b.disabled) b.click(); }
@@ -410,10 +453,25 @@
  if (window.relay.onUpdateReady) window.relay.onUpdateReady((info)=>{
    const b=$('upd-banner'); if(!b) return;
    if(info && info.version && $('upd-ver')) $('upd-ver').textContent='v'+info.version;
-   b.classList.add('show');
+   const txt=b.querySelector('.txt'); if(txt) txt.innerHTML='Update <b id="upd-ver">v'+(info&&info.version?info.version:'')+'</b> downloaded. Restart to apply.';
+   const go=$('upd-go'); if(go) go.style.display='';
+   const later=$('upd-later'); if(later) later.style.display='';
+   b.classList.remove('downloading'); b.classList.add('show');
  });
  if($('upd-go')) $('upd-go').onclick=async()=>{ $('upd-go').textContent='Restarting…'; $('upd-go').disabled=true; try{ await window.relay.installUpdate(); }catch(e){ line('update failed'); } };
  if($('upd-later')) $('upd-later').onclick=()=>{ $('upd-banner').classList.remove('show'); line('update deferred — it\'ll apply next time you fully close the app'); };
+
+
+ // update detected + downloading — show the banner early in a muted state
+ if (window.relay.onUpdateDownloading) window.relay.onUpdateDownloading((info)=>{
+   const b=$('upd-banner'); if(!b) return;
+   if(info && info.version && $('upd-ver')) $('upd-ver').textContent='v'+info.version;
+   const txt=$('upd-banner').querySelector('.txt');
+   if(txt) txt.innerHTML='Update <b id="upd-ver">'+(info&&info.version?'v'+info.version:'')+'</b> downloading…';
+   const go=$('upd-go'); if(go){ go.style.display='none'; }      // no button until ready
+   const later=$('upd-later'); if(later){ later.style.display='none'; }
+   b.classList.add('show','downloading');
+ });
 
 </script>
 <div class="cat-scrim" id="cat-scrim">
