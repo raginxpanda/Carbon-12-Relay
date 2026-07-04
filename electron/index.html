@@ -309,7 +309,7 @@
  function renderCatalog(cat){
    const list=$('cat-list'); if(!list) return;
    let rows=CATALOG.slice(); if(cat&&cat!=='All') rows=rows.filter(i=>i.category===cat);
-   rows.sort((a,b)=> String(b.earnedAt||'').localeCompare(String(a.earnedAt||'')) || a.name.localeCompare(b.name));
+   rows.sort((a,b)=> ((b.id||0)-(a.id||0)) || String(b.earnedAt||'').localeCompare(String(a.earnedAt||'')) || a.name.localeCompare(b.name));
    list.innerHTML = rows.length? rows.map(i=>'<div class="cat-row"><span class="nm">'+i.name+'</span><span class="cg">'+i.category+'</span><span class="dt">'+fmtDate(i.earnedAt)+'</span></div>').join('') : '<div class="hint" style="padding:12px 0">Nothing here yet.</div>';
  }
  function openCatalog(){

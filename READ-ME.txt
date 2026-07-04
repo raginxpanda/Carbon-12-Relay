@@ -1,33 +1,21 @@
-RELAY 0.2.15 — "Restart & Update" button
-========================================
-Adds the click-to-update UX you asked for, and folds in the two prior fixes so
-this is the single current drop.
+RELAY 0.2.16 — "recent" / catalog now show genuinely newest first
+=================================================================
+Only electron/index.html changed. Pairs with BOT r264. Drag in -> Replace -> Yes.
 
-WHAT'S NEW
- • When an update finishes downloading in the background, a cyan banner slides in
-   at the top: "Update vX.Y.Z downloaded. Restart to apply." with two buttons:
-     - "Restart & Update" -> closes the app, applies the update, reopens the NEW
-       version automatically (autoUpdater.quitAndInstall).
-     - "Later" -> dismisses; the update still applies next time you fully quit.
- • A desktop notification also fires when the update is ready.
+THE BUG: the "Recent" strip and the blueprint catalog weren't showing your newest
+blueprints first — new ones got buried.
 
-INCLUDED FROM PRIOR DROPS (so you only need this one)
- • 0.2.13 pairing-endpoint allowlist (security) — was missing from the 0.2.14
-   main.cjs; it's correctly included here.
- • 0.2.14 live blueprint-count refresh (the 58->59 fix) — main.cjs onHaulChanged +
-   index.html refresh handler.
-   NOTE: 0.2.14 also shipped src/relay.mjs. THIS drop does NOT re-include relay.mjs
-   (no change to it here), so if you haven't shipped 0.2.14's relay.mjs yet, take it
-   from that drop too. The count fix needs BOTH relay.mjs (fires the signal) and this
-   index.html (acts on it).
+ROOT CAUSE: sorting was by earned_at date, but most blueprints have NO backfilled
+earned_at (only re-running catch-up fills real dates). Null dates collapsed to ""
+and fell back to ALPHABETICAL — so genuinely-new blueprints scattered into the
+alphabet instead of sitting at the top.
 
-FILES (drag electron/ in -> Replace all -> Yes)
-  electron/main.cjs  electron/preload.cjs  electron/index.html
-  (+ src/relay.mjs from the 0.2.14 drop if not already shipped)
+FIX (both sides):
+ • BOT r264 — "recent" now sorts by insertion order (the auto-increment id), which
+   is the true "most recently added" signal regardless of earned_at. Also sends id
+   on each catalog item.
+ • RELAY (this) — the catalog modal sorts by id DESC too (then date, then name),
+   matching the bot. Newest additions always on top.
 
-HOW IT WORKS
- electron-updater already downloads updates in the background (unchanged). This
- just surfaces the "ready" state as an in-app button and calls quitAndInstall on
- click. Auto-update itself needs your GitHub release published as before.
-
+DEPLOY BOTH: bot r264 (no migration, just restart) + this index.html.
 SHIP: npm version patch ; git push --follow-tags
