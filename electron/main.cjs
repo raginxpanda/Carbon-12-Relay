@@ -63,6 +63,7 @@ function setupAutoUpdate() {
   if (!autoUpdater) return;
   try {
     autoUpdater.autoDownload = true;
+    autoUpdater.autoInstallOnAppQuit = true;   // if quitAndInstall's own path fails, install on the next quit
     autoUpdater.on('update-available', (i) => {
       status(`update available: v${i.version} — downloading…`);
       // let the UI show a subtle "downloading" hint so the user knows the button is coming
@@ -144,19 +145,29 @@ else {
     ipcMain.handle('installUpdate', () => {
       if (!autoUpdater) return { ok: false, reason: 'no-updater' };
       isUpdating = true;
-      status('installing update — closing app…');
-      // Release everything that could hold the executable open, or Windows can't
-      // swap the .exe and the installer sits on a "close the app / retry" prompt.
+      status('installing update — restarting…');
+      // Release everything that holds the .exe open (tail + timers, tray, the
+      // hide-to-tray close handler) so Windows can swap the executable.
       try { if (relay) { relay.stop(); relay = null; } } catch {}
       try { if (tray) { tray.destroy(); tray = null; } } catch {}
       try { for (const w of BrowserWindow.getAllWindows()) { w.removeAllListeners('close'); w.destroy(); } } catch {}
-      // quitAndInstall on the next tick, after teardown settles.
+
       setImmediate(() => {
-        try { autoUpdater.quitAndInstall(false, true); } // isSilent=false, forceRunAfter=true
-        catch (e) { status(`update install failed: ${e.message}`); }
-        // Hard fallback: if the app is still alive shortly after, force-exit so the
-        // installer's file lock clears and it can finish. quitAndInstall relaunches us.
-        setTimeout(() => { try { app.exit(0); } catch {} }, 4000);
+        try {
+          // isSilent=true  -> run the NSIS installer silently (no UI to interrupt the relaunch)
+          // isForceRunAfter=true -> relaunch the app after install, even on a silent install
+          autoUpdater.quitAndInstall(true, true);
+        } catch (e) {
+          status(`update install failed: ${e.message}`);
+          // Fallback path: schedule install-on-quit + relaunch ourselves, then quit
+          // gracefully (NOT app.exit, which would kill the relaunch handoff).
+          try { app.relaunch(); } catch {}
+          try { app.quit(); } catch {}
+        }
+        // Gentle safety net: if we're somehow still alive after the installer should
+        // have taken over, quit GRACEFULLY (app.quit preserves the relaunch handoff;
+        // app.exit would hard-kill it and is why the old build didn't restart).
+        setTimeout(() => { if (isUpdating) { try { app.quit(); } catch {} } }, 8000);
       });
       return { ok: true };
     });

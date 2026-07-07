@@ -1,24 +1,32 @@
-RELAY 0.2.22 — blueprint catalog: search + sort
-================================================
-Only electron/index.html changed. Drag in -> Replace -> Yes. Consolidated set
-(carries all prior electron work).
+RELAY 0.2.23 — "Restart & Update" now actually restarts
+=======================================================
+THE BUG: clicking "Restart & Update" closed the app (or tried to) but did NOT
+relaunch into the new version.
 
-TWO REQUESTED ADDITIONS to "Browse Full Blueprint Catalog":
+ROOT CAUSE: the old install path had a hard `app.exit(0)` fallback firing 4s after
+quitAndInstall. app.exit is a HARD kill — it was racing the installer and killing
+the relaunch handoff before it could bring the app back. It also used the
+non-silent installer (isSilent=false), whose UI can interrupt the auto-relaunch.
 
-1) SEARCH — a search box at the top of the catalog. Type any part of a blueprint
-   name and the list filters live as you type. Works together with the category
-   tabs (search within a category, or across "All"). Auto-focuses when the catalog
-   opens so you can just start typing.
+THE FIX (reliable restart):
+ • quitAndInstall(true, true) — SILENT install (no UI to interrupt) + forceRunAfter
+   (relaunch after install). This is the combo that restarts cleanly on Windows.
+ • autoInstallOnAppQuit = true — if the direct path ever fails, the update still
+   installs on the next quit.
+ • Fallback now uses app.relaunch() + app.quit() (GRACEFUL) instead of app.exit()
+   (HARD kill) — a graceful quit preserves the relaunch; a hard exit killed it.
+ • The 8s safety net also uses app.quit(), never app.exit().
+ • Teardown (stop relay, destroy tray, strip hide-to-tray close handler) is
+   unchanged — that part correctly lets the app close.
 
-2) SORT — a dropdown with four options:
-     • Newest first  (default — most recently collected on top)
-     • Oldest first  (earliest collected first; blueprints with no recorded date
-                      sort last, since their age is unknown)
-     • Name A–Z
-     • Name Z–A
+CONSOLIDATED electron set (carries everything: allowlist, live-count, update
+button + auto-popup, close/teardown, collapsible modules, QoL batch, catalog
+search+sort). Supersedes 0.2.13–0.2.22 electron files.
 
-   Search, sort, and the category tabs all compose — pick a category, type a
-   search, choose a sort, and they stack correctly. The count in the header shows
-   "N shown" when filtered, "N owned" otherwise.
+IMPORTANT — the catch-22 again: the version installed on your machine RIGHT NOW
+still has the old (broken) restart code. So updating TO 0.2.23 may still not
+auto-restart — you may need to reopen the app manually this once. From 0.2.23
+FORWARD, "Restart & Update" restarts cleanly on its own. (The fix can only run
+once it's the installed version.)
 
-NO bot change. SHIP: npm version patch ; git push --follow-tags
+SHIP: npm version patch ; git push --follow-tags
