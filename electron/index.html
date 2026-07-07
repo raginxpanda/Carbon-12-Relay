@@ -94,7 +94,13 @@
  .cat-h .t{font-family:'Rajdhani';text-transform:uppercase;letter-spacing:.16em;font-size:13px;color:var(--white);font-weight:600}
  .cat-h .x{margin-left:auto;background:none;border:1px solid var(--line);color:var(--text-dim);border-radius:5px;width:28px;height:28px;cursor:pointer}
  .cat-h .x:hover{color:var(--white);border-color:var(--blue)}
- .cat-tabs{display:flex;gap:5px;flex-wrap:wrap;padding:10px 16px;border-bottom:1px solid var(--line)}
+ .cat-toolbar{display:flex;gap:8px;padding:10px 16px 4px;align-items:center}
+ .cat-search{flex:1;background:var(--panel-2,#0d1420);border:1px solid var(--line);border-radius:7px;color:var(--white,#eaf2ff);font-family:'Rajdhani',sans-serif;font-size:14px;padding:7px 11px;outline:none}
+ .cat-search:focus{border-color:var(--blue,#4a9eff)}
+ .cat-search::placeholder{color:var(--text-dim,#6c8199)}
+ .cat-sort{background:var(--panel-2,#0d1420);border:1px solid var(--line);border-radius:7px;color:var(--text,#cdd9ea);font-family:'Rajdhani',sans-serif;font-size:13px;padding:7px 9px;outline:none;cursor:pointer}
+ .cat-sort:focus{border-color:var(--blue,#4a9eff)}
+ .cat-tabs{display:flex;gap:5px;flex-wrap:wrap;padding:8px 16px 10px;border-bottom:1px solid var(--line)}
  .cat-tab{font-family:'Rajdhani';text-transform:uppercase;letter-spacing:.1em;font-size:11px;padding:5px 10px;border:1px solid var(--line);border-radius:6px;background:var(--panel-2);color:var(--text-dim);cursor:pointer}
  .cat-tab.on{border-color:var(--blue);color:var(--white);background:rgba(74,158,255,.12)}
  .cat-list{overflow:auto;padding:10px 16px 16px}
@@ -330,18 +336,47 @@
 
  let CATALOG=[]; const ALLCATS=['All','Armor','Weapons','Attachments','Ship Components','Misc'];
  function fmtDate(iso){ if(!iso) return '—'; try{ const d=new Date(iso); return d.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'2-digit'}); }catch{ return '—'; } }
+ let CAT_STATE={cat:'All',q:'',sort:'recent'};
+ function sortRows(rows,mode){
+   const byId=(a,b)=>((b.id||0)-(a.id||0));
+   const byName=(a,b)=>a.name.localeCompare(b.name);
+   const byDate=(a,b)=>String(a.earnedAt||'').localeCompare(String(b.earnedAt||''));
+   if(mode==='az') return rows.sort((a,b)=>byName(a,b));
+   if(mode==='za') return rows.sort((a,b)=>byName(b,a));
+   if(mode==='oldest'){
+     return rows.sort((a,b)=>{
+       const ad=a.earnedAt?1:0, bd=b.earnedAt?1:0;
+       if(ad!==bd) return bd-ad;              // dated items before undated (unknown age)
+       if(a.earnedAt&&b.earnedAt) return byDate(a,b);  // both dated: earliest first
+       return (a.id||0)-(b.id||0);            // both undated: insertion order
+     });
+   }
+   // 'recent' (default): newest first by insertion id, then date, then name
+   return rows.sort((a,b)=> byId(a,b) || byDate(b,a) || byName(a,b));
+ }
  function renderCatalog(cat){
+   if(cat!==undefined) CAT_STATE.cat=cat;
    const list=$('cat-list'); if(!list) return;
-   let rows=CATALOG.slice(); if(cat&&cat!=='All') rows=rows.filter(i=>i.category===cat);
-   rows.sort((a,b)=> ((b.id||0)-(a.id||0)) || String(b.earnedAt||'').localeCompare(String(a.earnedAt||'')) || a.name.localeCompare(b.name));
-   list.innerHTML = rows.length? rows.map(i=>'<div class="cat-row"><span class="nm">'+i.name+'</span><span class="cg">'+i.category+'</span><span class="dt">'+fmtDate(i.earnedAt)+'</span></div>').join('') : '<div class="hint" style="padding:12px 0">Nothing here yet.</div>';
+   let rows=CATALOG.slice();
+   if(CAT_STATE.cat && CAT_STATE.cat!=='All') rows=rows.filter(i=>i.category===CAT_STATE.cat);
+   const q=(CAT_STATE.q||'').trim().toLowerCase();
+   if(q) rows=rows.filter(i=>i.name.toLowerCase().includes(q));
+   rows=sortRows(rows,CAT_STATE.sort);
+   const total=rows.length;
+   list.innerHTML = total? rows.map(i=>'<div class="cat-row"><span class="nm">'+i.name+'</span><span class="cg">'+i.category+'</span><span class="dt">'+fmtDate(i.earnedAt)+'</span></div>').join('') : '<div class="hint" style="padding:12px 0">'+(q?'No blueprints match \''+q+'\'.':'Nothing here yet.')+'</div>';
+   const cc=$('cat-count'); if(cc) cc.textContent = q||CAT_STATE.cat!=='All' ? (total+' shown') : (CATALOG.length+' owned');
  }
  function openCatalog(){
    const tabs=$('cat-tabs'); const counts={}; CATALOG.forEach(i=>counts[i.category]=(counts[i.category]||0)+1);
    tabs.innerHTML=ALLCATS.map(c=>{ const n=c==='All'?CATALOG.length:(counts[c]||0); return '<button class="cat-tab'+(c==='All'?' on':'')+'" data-c="'+c+'">'+c+' ('+n+')</button>'; }).join('');
    tabs.querySelectorAll('.cat-tab').forEach(b=>b.onclick=()=>{ tabs.querySelectorAll('.cat-tab').forEach(x=>x.classList.remove('on')); b.classList.add('on'); renderCatalog(b.dataset.c); });
    $('cat-count').textContent=CATALOG.length+' owned';
+   // reset + wire search and sort
+   CAT_STATE={cat:'All',q:'',sort:($('cat-sort')?$('cat-sort').value:'recent')};
+   const sb=$('cat-search'); if(sb){ sb.value=''; sb.oninput=()=>{ CAT_STATE.q=sb.value; renderCatalog(); }; }
+   const so=$('cat-sort'); if(so){ so.onchange=()=>{ CAT_STATE.sort=so.value; renderCatalog(); }; }
    renderCatalog('All'); $('cat-scrim').classList.add('on');
+   setTimeout(()=>{ const sb2=$('cat-search'); if(sb2) sb2.focus(); },50);
  }
 
 
@@ -477,6 +512,15 @@
 <div class="cat-scrim" id="cat-scrim">
  <div class="cat-modal">
   <div class="cat-h"><span class="t">Blueprint Catalog</span><span class="hint" id="cat-count"></span><button class="x" id="cat-close">×</button></div>
+  <div class="cat-toolbar">
+   <input type="text" id="cat-search" class="cat-search" placeholder="Search blueprints…" autocomplete="off" spellcheck="false">
+   <select id="cat-sort" class="cat-sort">
+    <option value="recent">Newest first</option>
+    <option value="oldest">Oldest first</option>
+    <option value="az">Name A–Z</option>
+    <option value="za">Name Z–A</option>
+   </select>
+  </div>
   <div class="cat-tabs" id="cat-tabs"></div>
   <div class="cat-list" id="cat-list"></div>
  </div>

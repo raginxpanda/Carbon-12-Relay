@@ -1,30 +1,24 @@
-RELAY 0.2.21 — five quality-of-life additions
-=============================================
-Drag electron/ in -> Replace all -> Yes. Consolidated electron set (includes all
-prior electron fixes: allowlist, update button + auto-popup + close-fix, live
-count, recent-ordering, collapsible modules).
+RELAY 0.2.22 — blueprint catalog: search + sort
+================================================
+Only electron/index.html changed. Drag in -> Replace -> Yes. Consolidated set
+(carries all prior electron work).
 
-1) COLLAPSE-STATE MEMORY
-   Every module section (Paired orgs, Catch up, Connection, Kill feed, Activity,
-   Settings) now remembers whether you left it open or closed, across restarts.
-   Set it up how you like once; it stays that way.
+TWO REQUESTED ADDITIONS to "Browse Full Blueprint Catalog":
 
-2) "COPIED!" CONFIRMATION
-   The Copy button in Activity now flashes "Copied!" in cyan for a moment so you
-   know the log actually copied.
+1) SEARCH — a search box at the top of the catalog. Type any part of a blueprint
+   name and the list filters live as you type. Works together with the category
+   tabs (search within a category, or across "All"). Auto-focuses when the catalog
+   opens so you can just start typing.
 
-3) LIVE SESSION SUMMARY
-   A line under the status bar shows "N blueprints · N kills · N deaths · this
-   session", updating live as events come in. Resets when you start a fresh session.
-   (Kills/deaths fill in once combat data flows — pairs with the combat parser.)
+2) SORT — a dropdown with four options:
+     • Newest first  (default — most recently collected on top)
+     • Oldest first  (earliest collected first; blueprints with no recorded date
+                      sort last, since their age is unknown)
+     • Name A–Z
+     • Name Z–A
 
-4) KILL-FEED COUNT BADGE
-   The Kill feed header shows a small orange badge with the session kill count, so
-   even when that section is collapsed you can see combat happened. Hidden at 0.
+   Search, sort, and the category tabs all compose — pick a category, type a
+   search, choose a sort, and they stack correctly. The count in the header shows
+   "N shown" when filtered, "N owned" otherwise.
 
-5) MINIMIZE-TO-TRAY TOGGLE (Settings)
-   New checkbox: "Keep running in the tray when I close the window." On by default
-   (current behavior). Uncheck it and closing the window quits the app instead.
-
-All prefs are stored in your relay config (with getUI/setUI), so they persist.
 NO bot change. SHIP: npm version patch ; git push --follow-tags
